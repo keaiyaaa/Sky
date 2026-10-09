@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="video_qualities">
+        <item>流畅 (720P@30fps)</item>
+        <item>高清 (1080P@30fps)</item>
+        <item>超清 (1080P@60fps)</item>
+        <item>4K (2160P@30fps)</item>
+    </string-array>
+
+    <string-array name="video_quality_values">
+        <item>smooth</item>
+        <item>hd</item>
+        <item>ultra</item>
+        <item>4k</item>
+    </string-array>
+
+    <string-array name="image_qualities">
+        <item>标准 (1200万像素)</item>
+        <item>高清 (2400万像素)</item>
+        <item>超清 (4800万像素)</item>
+    </string-array>
+
+    <string-array name="image_quality_values">
+        <item>standard</item>
+        <item>high</item>
+        <item>ultra</item>
+    </string-array>
+
+    <string-array name="failsafe_actions">
+        <item>自动返航</item>
+        <item>悬停</item>
+        <item>原地降落</item>
+    </string-array>
+
+    <string-array name="failsafe_values">
+        <item>rth</item>
+        <item>hover</item>
+        <item>land</item>
+    </string-array>
+
+    <string-array name="obstacle_actions">
+        <item>刹停</item>
+        <item>绕行</item>
+    </string-array>
+
+    <string-array name="obstacle_values">
+        <item>brake</item>
+        <item>bypass</item>
+    </string-array>
+</resources>

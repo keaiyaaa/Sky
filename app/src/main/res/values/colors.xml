@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 主题色 -->
+    <color name="primary">#5B8FF9</color>
+    <color name="primary_dark">#4a80f0</color>
+    <color name="primary_light">#E8F0FE</color>
+
+    <!-- 功能色 -->
+    <color name="accent">#07C160</color>
+    <color name="vip_gold_start">#FFD700</color>
+    <color name="vip_gold_end">#FFA500</color>
+
+    <!-- 语义色 -->
+    <color name="red_500">#EF4444</color>
+    <color name="red_50">#FEF2F2</color>
+    <color name="green_500">#10B981</color>
+    <color name="green_700">#15803D</color>
+    <color name="green_50">#ECFDF5</color>
+    <color name="orange_500">#F59E0B</color>
+    <color name="orange_50">#FFFBEB</color>
+    <color name="yellow_500">#F59E0B</color>
+    <color name="purple_500">#8B5CF6</color>
+    <color name="blue_500">#3B82F6</color>
+    <color name="blue_700">#1D4ED8</color>
+
+    <!-- 灰度色 -->
+    <color name="gray_50">#F9FAFB</color>
+    <color name="gray_100">#F3F4F6</color>
+    <color name="gray_200">#E5E7EB</color>
+    <color name="gray_300">#D1D5DB</color>
+    <color name="gray_400">#9CA3AF</color>
+    <color name="gray_500">#6B7280</color>
+    <color name="gray_600">#4B5563</color>
+    <color name="gray_700">#374151</color>
+    <color name="gray_800">#1F2937</color>
+    <color name="gray_900">#111827</color>
+
+    <!-- 基础色 -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="background">#F5F6F8</color>
+    <color name="transparent">#00000000</color>
+    <color name="black_50">#80000000</color>
+    <color name="black_70">#B3000000</color>
+
+    <!-- 航拍页面模式切换颜色（来自 DJI-FLY-aerial） -->
+    <color name="mode_active">#805B8FF9</color>
+    <color name="mode_inactive">#335B8FF9</color>
+    <color name="danger">#EF4444</color>
+
+    <!-- 巡检模块颜色（来自 DJI-FLY-asuka912） -->
+    <color name="text_primary">#1F2937</color>
+    <color name="text_secondary">#6B7280</color>
+    <color name="text_hint">#9CA3AF</color>
+    <color name="text_disabled">#D1D5DB</color>
+    <color name="success">#22C55E</color>
+    <color name="success_light">#DCFCE7</color>
+    <color name="danger_light">#FEE2E2</color>
+    <color name="warning">#F59E0B</color>
+    <color name="vip_gold">#FFD700</color>
+    <color name="vip_orange">#FFA500</color>
+    <color name="border">#E5E7EB</color>
+    <color name="border_light">#F3F4F6</color>
+    <color name="bg_page">#F0F2F5</color>
+    <color name="bg_card">#FFFFFF</color>
+    <color name="bg_gray">#F9FAFB</color>
+    <color name="bg_gray_light">#F3F4F6</color>
+    <color name="black_transparent_30">#4D000000</color>
+    <color name="black_transparent_50">#80000000</color>
+    <color name="black_transparent_60">#99000000</color>
+</resources>

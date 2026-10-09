@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <usb-accessory manufacturer="DJI" model="A1" version="1.0"/>
+    <usb-accessory manufacturer="DJI" model="A2" version="1.0"/>
+    <usb-accessory manufacturer="DJI" model="A3" version="1.0"/>
+    <usb-accessory manufacturer="DJI" model="N1" version="1.0"/>
+</resources>

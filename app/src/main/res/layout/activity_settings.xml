@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              xmlns:app="http://schemas.android.com/apk/res-auto"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="horizontal"
+              android:background="@color/background">
+
+    <!-- 左侧分类菜单 -->
+    <LinearLayout
+            android:layout_width="180dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:background="@color/white"
+            android:elevation="2dp">
+
+        <!-- 返回按钮区域 -->
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp">
+
+            <ImageView
+                    android:id="@+id/iv_back"
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:src="@drawable/ic_arrow_back"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/back_to_home"
+                    android:textSize="12sp"
+                    android:textColor="@color/gray_500"
+                    android:layout_marginStart="12dp" />
+        </LinearLayout>
+
+        <!-- 菜单项 -->
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginTop="16dp">
+
+            <TextView
+                    android:id="@+id/menu_account"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:text="@string/settings_account"
+                    android:textSize="12sp"
+                    android:textColor="@color/primary"
+                    android:background="@drawable/bg_menu_active" />
+
+            <TextView
+                    android:id="@+id/menu_flight"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:text="@string/settings_flight"
+                    android:textSize="12sp"
+                    android:textColor="@color/gray_600" />
+
+            <TextView
+                    android:id="@+id/menu_video"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:text="@string/settings_video"
+                    android:textSize="12sp"
+                    android:textColor="@color/gray_600" />
+
+            <TextView
+                    android:id="@+id/menu_about"
+                    android:layout_width="match_parent"
+                    android:layout_height="48dp"
+                    android:gravity="center_vertical"
+                    android:paddingStart="16dp"
+                    android:text="@string/settings_about"
+                    android:textSize="12sp"
+                    android:textColor="@color/gray_600" />
+        </LinearLayout>
+
+        <!-- 版本号 -->
+        <View
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+        <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp"
+                android:gravity="center"
+                android:text="Version 1.0.0"
+                android:textSize="9sp"
+                android:textColor="@color/gray_300" />
+    </LinearLayout>
+
+    <!-- 右侧内容区 -->
+    <FrameLayout
+            android:id="@+id/content_frame"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="@color/gray_50" />
+
+</LinearLayout>

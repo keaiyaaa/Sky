@@ -1,0 +1,378 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    航线规划页面主布局
+    对应 HTML: Fight_route.html (#mainContainer)
+    结构: MapView 铺满全屏，其他控件浮于上层
+-->
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F0F2F5">
+
+    <!-- ==================== 地图层（底层） ==================== -->
+    <!-- 对应 HTML: #simulatedMap -->
+    <!-- DJI V5 地图能力以 MapLibre 为底层，铺满整个屏幕 -->
+    <com.mapbox.mapboxsdk.maps.MapView
+        android:id="@+id/mapView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- ==================== 浮层控件（上层） ==================== -->
+
+    <!-- 对应 HTML: #toggleSidebarBtn - 侧边栏切换按钮 -->
+    <ImageButton
+        android:id="@+id/btnToggleSidebar"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="12dp"
+        android:background="@drawable/bg_rounded_white"
+        android:src="@android:drawable/ic_menu_sort_by_size"
+        android:scaleType="centerInside"
+        android:contentDescription="@string/menu"
+        android:elevation="8dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <!-- 对应 HTML: #topInfo - 顶部信息栏 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardTopInfo"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="#66FFFFFF"
+        android:elevation="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="6dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/tvCurrentPosition"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/default_position"
+                android:textSize="10sp"
+                android:textColor="#666666" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="12dp"
+                android:layout_marginHorizontal="10dp"
+                android:background="#CCCCCC" />
+
+            <TextView
+                android:id="@+id/tvCurrentCoord"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/default_coord"
+                android:textSize="10sp"
+                android:textColor="#666666" />
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="12dp"
+                android:layout_marginHorizontal="10dp"
+                android:background="#CCCCCC" />
+
+            <TextView
+                android:id="@+id/tvObstacleStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/obstacle_status_idle"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="#E67E22" />
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 对应 HTML: #zoneLegend - 飞行区域图例 -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardZoneLegend"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:layout_marginEnd="12dp"
+        app:cardCornerRadius="12dp"
+        app:cardElevation="4dp"
+        app:cardBackgroundColor="#E6FFFFFF"
+        android:elevation="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/zone_legend_title"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:textColor="#444444"
+                android:layout_marginBottom="6dp" />
+
+            <!-- 禁飞区 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:background="@drawable/bg_zone_no_fly" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/zone_no_fly"
+                    android:textSize="9sp"
+                    android:textColor="#666666"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <!-- 限高区 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="4dp">
+
+                <View
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:background="@drawable/bg_zone_restricted" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/zone_restricted"
+                    android:textSize="9sp"
+                    android:textColor="#666666"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+            <!-- 可飞区 -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <View
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:background="@drawable/bg_zone_safe" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/zone_safe"
+                    android:textSize="9sp"
+                    android:textColor="#666666"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- 对应 HTML: #sidebarPanel - 左侧滑出面板 -->
+    <LinearLayout
+        android:id="@+id/sidebarPanel"
+        android:layout_width="224dp"
+        android:layout_height="0dp"
+        android:orientation="vertical"
+        android:background="#D9FFFFFF"
+        android:elevation="16dp"
+        android:translationX="-224dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <!-- 航线管理标题区 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="14dp"
+            android:background="#1AFFFFFF">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/route_management"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#333333"
+                android:layout_marginBottom="8dp" />
+
+            <!-- 对应 HTML: #routeTabs - 航线标签列表 -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/rvRouteTabs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#33000000" />
+
+        <!-- 对应 HTML: #waypointList - 航点列表 -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvWaypointList"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:padding="10dp"
+            android:clipToPadding="false" />
+
+        <!-- 对应 HTML: 底部按钮区 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="10dp"
+            android:background="#4DFFFFFF">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNewRoute"
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:text="@string/new_route"
+                android:textSize="11sp"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="#E65B8FF9"
+                app:cornerRadius="8dp"
+                android:layout_marginBottom="6dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEditRoute"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:text="@string/edit_route"
+                android:textSize="11sp"
+                app:cornerRadius="8dp"
+                android:layout_marginBottom="6dp" />
+
+            <!-- 对应 HTML: #optimizeBtn -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnOptimize"
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:text="@string/optimize_route"
+                android:textSize="11sp"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="#E6D97706"
+                app:cornerRadius="8dp"
+                android:layout_marginBottom="6dp" />
+
+            <!-- 对应 HTML: syncToMissions 按钮 -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSyncToMission"
+                android:layout_width="match_parent"
+                android:layout_height="38dp"
+                android:text="@string/sync_to_mission"
+                android:textSize="11sp"
+                android:textColor="#FFFFFF"
+                app:backgroundTint="#E64CAF50"
+                app:cornerRadius="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 对应 HTML: #rightButtons - 右侧工具按钮 -->
+    <LinearLayout
+        android:id="@+id/rightButtons"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_marginEnd="16dp"
+        android:layout_marginTop="80dp"
+        android:elevation="8dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/cardZoneLegend">
+
+        <!-- 对应 HTML: #addPointBtn - 添加航点 -->
+        <ImageButton
+            android:id="@+id/btnAddPoint"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_rounded_white"
+            android:src="@android:drawable/ic_input_add"
+            android:scaleType="centerInside"
+            android:contentDescription="@string/add_waypoint"
+            android:layout_marginBottom="8dp" />
+
+        <!-- 对应 HTML: #erasePointBtn - 删除航点（默认隐藏） -->
+        <ImageButton
+            android:id="@+id/btnErasePoint"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="@drawable/bg_rounded_white"
+            android:src="@android:drawable/ic_menu_delete"
+            android:scaleType="centerInside"
+            android:contentDescription="@string/erase_waypoint"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- 对应 HTML: #bottomButtons - 底部操作栏 -->
+    <LinearLayout
+        android:id="@+id/bottomBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginEnd="24dp"
+        android:layout_marginBottom="16dp"
+        android:gravity="center_vertical"
+        android:elevation="8dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- 对应 HTML: 取消按钮 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCancel"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="@string/cancel"
+            android:textSize="12sp"
+            android:textColor="#666666"
+            app:strokeColor="#CCCCCCCC"
+            app:cornerRadius="20dp"
+            android:layout_marginEnd="10dp" />
+
+        <!-- 对应 HTML: #actionBtn - 开始设置航线 / 完成设置 -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnAction"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:text="@string/start_setting"
+            android:textSize="12sp"
+            android:textColor="#FFFFFF"
+            app:backgroundTint="#5B8FF9"
+            app:cornerRadius="20dp" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

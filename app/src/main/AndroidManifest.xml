@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 大疆 SDK 所需权限 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- 航拍功能所需权限（来自 DJI-FLY-aerial） -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <!-- 硬件特性声明 -->
+    <!-- ═══════════════════════════════════════════════════════════════ -->
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+    <uses-feature android:name="android.hardware.usb.accessory" android:required="true" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+    <application
+            android:name=".SkyPivotApplication"
+            android:allowBackup="true"
+            android:dataExtractionRules="@xml/data_extraction_rules"
+            android:fullBackupContent="@xml/backup_rules"
+            android:icon="@android:drawable/btn_star"
+            android:label="天枢巡检"
+            android:requestLegacyExternalStorage="true"
+            android:roundIcon="@android:drawable/btn_star"
+            android:supportsRtl="true"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            android:networkSecurityConfig="@xml/network_security_config"
+            tools:targetApi="31">
+
+        <!-- ════════════════════════════════════════════════════════ -->
+        <!-- 大疆 SDK App Key -->
+        <!-- ════════════════════════════════════════════════════════ -->
+        <meta-data
+            android:name="com.dji.sdk.API_KEY"
+            android:value="a4c156d9f424352795d6237a" />
+
+        <meta-data
+            android:name="name"
+            android:value="SkyPivotInspection" />
+
+        <!-- DJI SDK 后台服务（来自 DJI-FLY-asuka912） -->
+        <service
+            android:name="dji.sdk.base.DJIService"
+            android:exported="false" />
+
+        <!-- 高德地图 API Key（航线规划模块地图瓦片） -->
+        <meta-data
+            android:name="com.example.msdksample.kami.amap.API_KEY"
+            android:value="75746f8759b744997f1f9c1a7ea05c9c" />
+
+        <!-- FileProvider - 用于航拍照片/视频共享 -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+        <!-- ════════════════════════════════════════════════════════ -->
+        <!-- 主项目页面 -->
+        <!-- ════════════════════════════════════════════════════════ -->
+
+        <activity
+                android:name=".HomeActivity"
+                android:exported="true"
+                android:screenOrientation="landscape">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".ui.flight.FlightControlActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.route.RoutePlanActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.mission.MissionCenterActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.vip.VipActivity" android:screenOrientation="landscape" />
+
+        <!-- 设置相关页面 -->
+        <activity android:name=".ui.settings.SettingsActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.settings.AboutActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.settings.FlightSettingsActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.settings.VideoSettingsActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.settings.UserManualActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.settings.UpdateCheckActivity" android:screenOrientation="landscape" />
+
+        <!-- ════════════════════════════════════════════════════════ -->
+        <!-- 航拍模块页面（来自 DJI-FLY-aerial） -->
+        <!-- ════════════════════════════════════════════════════════ -->
+
+        <activity
+                android:name=".aerial.MainActivity"
+                android:exported="true"
+                android:label="@string/app_name"
+                android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
+                android:name=".aerial.Aerial_photography"
+                android:configChanges="orientation|screenSize"
+                android:exported="true"
+                android:screenOrientation="landscape" />
+
+        <!-- ════════════════════════════════════════════════════════ -->
+        <!-- 航线规划模块页面（来自 DJI-FLY-kami） -->
+        <!-- ════════════════════════════════════════════════════════ -->
+
+        <activity
+                android:name=".kami.RoutePlanningActivity"
+                android:exported="true"
+                android:screenOrientation="landscape"
+                android:theme="@style/Theme.Material3.DayNight.NoActionBar" />
+        <activity
+                android:name=".kami.KamiMainActivity"
+                android:exported="true"
+                android:label="@string/app_name"
+                android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
+        <!-- ════════════════════════════════════════════════════════ -->
+        <!-- 巡检模块页面（来自 DJI-FLY-asuka912） -->
+        <!-- ════════════════════════════════════════════════════════ -->
+
+        <activity
+                android:name=".asuka.MainActivity"
+                android:exported="true"
+                android:label="@string/app_name"
+                android:screenOrientation="landscape"
+                android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+        <activity
+                android:name=".asuka.MissionDetailActivity"
+                android:exported="true"
+                android:screenOrientation="landscape" />
+        <activity
+                android:name=".asuka.VipActivity"
+                android:exported="true"
+                android:screenOrientation="landscape" />
+
+    </application>
+
+</manifest>

@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">天枢巡检</string>
+    <string name="open">打开</string>
+    <string name="close">关闭</string>
+    <string name="action_settings">设置</string>
+
+    <!-- 首页 -->
+    <string name="drone_status">Drone Status</string>
+    <string name="start_flight">开始飞行</string>
+    <string name="route_plan">规划航线</string>
+    <string name="manual_control">手动接管</string>
+    <string name="auto_task">建立自动化任务</string>
+    <string name="mission_center">任务中心</string>
+    <string name="switch_device">切换设备</string>
+
+    <!-- 设置页面 -->
+    <string name="settings">设置</string>
+    <string name="settings_account">账户信息</string>
+    <string name="settings_flight">飞控参数</string>
+    <string name="settings_video">图传设置</string>
+    <string name="settings_about">关于系统</string>
+    <string name="back_to_home">返回主页</string>
+    <string name="logout">退出登录</string>
+
+    <!-- 飞控参数 -->
+    <string name="flight_parameters">飞控参数设置</string>
+    <string name="flight_return_altitude">返航高度</string>
+    <string name="flight_return_altitude_desc">无人机返航时的飞行高度</string>
+    <string name="flight_failsafe">失控行为</string>
+    <string name="flight_failsafe_desc">信号丢失时无人机的行为</string>
+    <string name="flight_beginner">新手模式</string>
+    <string name="flight_beginner_desc">开启后飞行距离和高度限制在30米内</string>
+    <string name="flight_obstacle">避障行为</string>
+    <string name="flight_obstacle_desc">检测到障碍物时的处理方式</string>
+    <string name="flight_sensitivity">操控灵敏度</string>
+    <string name="flight_sensitivity_desc">摇杆响应灵敏度调节</string>
+
+    <!-- 图传设置 -->
+    <string name="video_settings">图传画质设置</string>
+    <string name="video_quality">视频画质模式</string>
+    <string name="video_quality_desc">实时图传视频质量设置</string>
+    <string name="image_quality">图片画质模式</string>
+    <string name="image_quality_desc">拍摄照片质量设置</string>
+    <string name="auto_sync">自动同步巡查记录</string>
+    <string name="auto_sync_desc">任务结束后自动上传数据至云端</string>
+    <string name="low_battery_return">低电量自动返航</string>
+    <string name="low_battery_return_desc">当电池电量低于20%时强制执行</string>
+    <string name="save_settings">保存设置</string>
+
+    <!-- 关于系统 -->
+    <string name="about_system">关于系统</string>
+    <string name="app_version">天枢巡检系统</string>
+    <string name="version_code">版本 1.0.0</string>
+    <string name="device_info">设备信息</string>
+    <string name="software_version">软件版本</string>
+    <string name="drone_model">无人机型号</string>
+    <string name="serial_number">序列号</string>
+    <string name="firmware_version">固件版本</string>
+    <string name="warranty_info">保修服务</string>
+    <string name="warranty_status">有限保修</string>
+    <string name="storage_info">存储空间</string>
+    <string name="video_count">视频数量</string>
+    <string name="image_count">照片数量</string>
+    <string name="total_capacity">总容量</string>
+    <string name="used_capacity">已使用</string>
+    <string name="available_capacity">可用容量</string>
+    <string name="user_manual">用户手册</string>
+    <string name="check_update">检查更新</string>
+    <string name="next">下一个</string>
+    <string name="previous">上一个</string>
+    <string name="lorem_ipsum">Lorem ipsum dolor sit amet</string>
+
+    <!-- 航线规划模块字符串（来自 DJI-FLY-kami） -->
+    <string name="waypoint_count_format">%d 个航点</string>
+    <string name="current_waypoint_format">当前航点: %s</string>
+
+    <!-- 航线规划 UI 字符串（来自 DJI-FLY-kami 布局文件） -->
+    <string name="menu">菜单</string>
+    <string name="default_position">当前位置</string>
+    <string name="default_coord">--</string>
+    <string name="default_route_name">航线</string>
+    <string name="default_waypoint_count">0 个航点</string>
+    <string name="add_waypoint">添加航点</string>
+    <string name="erase_waypoint">擦除航点</string>
+    <string name="new_route">新建航线</string>
+    <string name="edit_route">编辑航线</string>
+    <string name="edit_route_task">编辑航线任务</string>
+    <string name="optimize_route">优化航线</string>
+    <string name="sync_to_mission">同步任务</string>
+    <string name="switch_route">切换航线</string>
+    <string name="switch_route_title">切换航线</string>
+    <string name="switch_route_message">选择要切换到的航线</string>
+    <string name="switch_and_fly">切换并执行</string>
+    <string name="start_setting">设置并执行</string>
+    <string name="cancel">取消</string>
+    <string name="save">保存</string>
+    <string name="delete">删除</string>
+    <string name="warning">警告</string>
+    <string name="route_management">航线管理</string>
+    <string name="route_locked">已锁定</string>
+    <string name="route_name_label">航线名称</string>
+    <string name="route_name_hint">输入航线名称</string>
+    <string name="task_name_label">任务名称</string>
+    <string name="task_name_hint">输入任务名称</string>
+    <string name="task_time_label">巡检时间</string>
+    <string name="task_time_hint">例: 2024-01-15 09:00</string>
+    <string name="priority_label">优先级</string>
+    <string name="no_task_set">(未设置任务)</string>
+    <string name="delete_confirm_title">确认删除</string>
+    <string name="delete_confirm_message">删除后航线数据将无法恢复，确定要删除吗？</string>
+    <string name="waypoint_count_label">航点数</string>
+    <string name="waypoint_sample_label">P01</string>
+    <string name="waypoint_sample_coord">(31.2304, 121.4737)</string>
+    <string name="zone_legend_title">飞行区域图例</string>
+    <string name="zone_no_fly">禁飞区</string>
+    <string name="zone_restricted">限高区</string>
+    <string name="zone_safe">可飞区</string>
+
+    <!-- 避障功能（航线自动飞行阶段） -->
+    <string name="obstacle_status_idle">避障: 就绪</string>
+    <string name="obstacle_status_dji_active">避障: 飞机自主避障中</string>
+    <string name="obstacle_status_demo_started">模拟避障演示已启动 (provider=simulation)</string>
+    <string name="obstacle_status_demo_finished">模拟避障演示完成</string>
+    <string name="obstacle_status_demo_stopped">模拟避障演示已停止</string>
+    <string name="obstacle_status_recovered">避障已解除，恢复正常飞行</string>
+    <string name="obstacle_need_two_waypoints">请先添加至少 2 个航点</string>
+    <string name="obstacle_not_connected">未连接无人机；可先开启模拟器体验避障演示</string>
+
+    <!-- 巡检模块字符串（来自 DJI-FLY-asuka912） -->
+    <string name="today_task">今日巡检</string>
+    <string name="pending_defect">待处理隐患</string>
+    <string name="ai_analysis">AI分析次数</string>
+    <string name="inspection_list">巡检列表</string>
+    <string name="title_mission_detail">检测结果</string>
+    <string name="subtitle_task_info">任务信息</string>
+    <string name="btn_history">历史巡逻</string>
+    <string name="btn_export_report">导出报告</string>
+    <string name="btn_create_work_order">创建维修工单</string>
+    <string name="btn_close">关闭</string>
+    <string name="btn_later">稍后再说</string>
+    <string name="btn_upgrade_now">立即升级</string>
+    <string name="btn_confirm">确定</string>
+    <string name="filter_title">筛选条件</string>
+    <string name="filter_sort">排序方式</string>
+    <string name="filter_priority">按优先级排序</string>
+    <string name="filter_time_desc">时间倒序（最新优先）</string>
+    <string name="filter_time_asc">时间正序（最早优先）</string>
+    <string name="history_title">历史巡逻记录</string>
+    <string name="history_subtitle">查看历史巡逻记录</string>
+    <string name="date_tasks_title">日期任务</string>
+    <string name="date_tasks_subtitle">当天所有任务</string>
+    <string name="vip_title">VIP 专属功能</string>
+    <string name="vip_desc">导出报告是会员专属功能，升级后即可使用</string>
+    <string name="vip_feature_1">无限次AI智能分析</string>
+    <string name="vip_feature_2">高清画质照片和视频</string>
+    <string name="vip_feature_3">专业报告导出分享</string>
+    <string name="success_title">操作成功</string>
+    <string name="success_create_order">已成功创建维修工单</string>
+    <string name="analysis_title">异常详情分析</string>
+    <string name="defect_type">缺陷类型</string>
+    <string name="location">坐标位置</string>
+    <string name="suggestion">处置建议</string>
+    <string name="ai_count">AI 试用次数</string>
+    <string name="ai_count_desc">剩余免费次数:</string>
+    <string name="ai_upgrade">升级会员解锁无限次AI分析 →</string>
+    <string name="status_urgent">紧急</string>
+    <string name="status_normal">正常</string>
+    <string name="no_defect">无隐患</string>
+    <string name="no_video">暂无视频</string>
+    <string name="loading">加载中...</string>
+</resources>

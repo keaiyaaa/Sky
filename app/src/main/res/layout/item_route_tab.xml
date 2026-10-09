@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    航线标签列表项
+    对应 HTML: .route-tab（由 JS 动态生成）
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:layout_marginBottom="4dp"
+    android:background="?android:attr/selectableItemBackground">
+
+    <!-- 第一行：航线名 + 状态图标 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/tvRouteName"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/default_route_name"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#333333" />
+
+        <!-- 锁/完成状态图标 -->
+        <ImageView
+            android:id="@+id/ivRouteStatus"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@android:drawable/ic_lock_idle_lock"
+            android:visibility="gone"
+            android:contentDescription="@string/route_locked" />
+    </LinearLayout>
+
+    <!-- 第二行：航点数 + 任务名 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginTop="2dp">
+
+        <TextView
+            android:id="@+id/tvWaypointCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/default_waypoint_count"
+            android:textSize="9sp"
+            android:textColor="#999999" />
+
+        <TextView
+            android:id="@+id/tvTaskName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text=""
+            android:textSize="9sp"
+            android:textColor="#666666"
+            android:layout_marginStart="6dp"
+            android:ellipsize="end"
+            android:maxLines="1" />
+    </LinearLayout>
+</LinearLayout>

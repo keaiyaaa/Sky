@@ -1,0 +1,17 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.SkyPivotInspection" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- Customize your light theme here. -->
+        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="homeAsUpIndicator">@drawable/ic_arrow_left</item>
+    </style>
+
+    <style name="Theme.SkyPivotInspection" parent="Base.Theme.SkyPivotInspection"/>
+
+    <!-- 全屏 Dialog 样式（来自 DJI-FLY-asuka912） -->
+    <style name="FullScreenDialog" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+    </style>
+</resources>

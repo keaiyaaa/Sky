@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="420dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_card_white"
+        android:padding="20dp">
+
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="DJI SDK 测试面板"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:textColor="@color/gray_800" />
+
+    <TextView
+            android:id="@+id/tv_test_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="SDK 未初始化"
+            android:textSize="12sp"
+            android:textColor="@color/gray_700"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginTop="12dp" />
+
+    <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp">
+
+        <TextView
+                android:id="@+id/btn_test_init"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="初始化 SDK"
+                android:textSize="12sp"
+                android:textColor="@color/primary"
+                android:background="@drawable/bg_primary_light"
+                android:clickable="true"
+                android:focusable="true" />
+
+        <TextView
+                android:id="@+id/btn_test_sim_on"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="开启模拟器"
+                android:textSize="12sp"
+                android:textColor="@color/white"
+                android:background="@drawable/bg_vip"
+                android:layout_marginStart="8dp"
+                android:clickable="true"
+                android:focusable="true" />
+
+        <TextView
+                android:id="@+id/btn_test_sim_off"
+                android:layout_width="0dp"
+                android:layout_height="40dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="关闭模拟器"
+                android:textSize="12sp"
+                android:textColor="@color/gray_700"
+                android:background="@drawable/bg_card_gray"
+                android:layout_marginStart="8dp"
+                android:clickable="true"
+                android:focusable="true" />
+    </LinearLayout>
+
+    <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="提示：隐藏入口，再次连续点击首页「设备状态」卡片 5 次可打开本面板"
+            android:textSize="10sp"
+            android:textColor="@color/gray_500"
+            android:layout_marginTop="12dp" />
+
+    <TextView
+            android:id="@+id/btn_test_close"
+            android:layout_width="match_parent"
+            android:layout_height="36dp"
+            android:gravity="center"
+            android:text="关闭"
+            android:textSize="12sp"
+            android:textColor="@color/primary"
+            android:background="@drawable/bg_primary_light"
+            android:layout_marginTop="12dp"
+            android:clickable="true"
+            android:focusable="true" />
+</LinearLayout>
