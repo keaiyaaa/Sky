@@ -16,7 +16,6 @@ import androidx.core.view.GravityCompat
 import androidx.activity.addCallback
 import com.google.android.material.navigation.NavigationView
 import com.example.msdksample.aerial.Aerial_photography
-import com.example.msdksample.auth.DemoLoginActivity
 import com.example.msdksample.auth.DemoSession
 import com.example.msdksample.asuka.MainActivity
 import com.example.msdksample.base.BaseActivity
@@ -66,11 +65,6 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
     override fun getViewBinding() = ActivityHomeBinding.inflate(layoutInflater)
 
     override fun initViews() {
-        if (DemoSession.signedInUser == null) {
-            startActivity(Intent(this, DemoLoginActivity::class.java))
-            finish()
-            return
-        }
         binding.navView.setNavigationItemSelectedListener(this)
         binding.btnNavigation.setOnClickListener { binding.drawerLayout.openDrawer(GravityCompat.START) }
         onBackPressedDispatcher.addCallback(this) {
@@ -175,8 +169,6 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
                 PreferenceManager.getInstance(this).logout()
                 refreshProfileHeader()
                 Toast.makeText(this, "已退出本机会话", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this, DemoLoginActivity::class.java))
-                finish()
             }
             .setNegativeButton("取消", null)
             .show()

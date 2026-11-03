@@ -24,6 +24,27 @@ class DeviceConnectionNavigationTest {
     private val instrumentation get() = InstrumentationRegistry.getInstrumentation()
     private val manager get() = DroneManager.getInstance()
 
+    @Test fun signingOutClearsBothLocalSessionsAndKeepsHomeAvailable() {
+        val prefs = com.example.msdksample.utils.PreferenceManager.getInstance(instrumentation.targetContext)
+        instrumentation.runOnMainSync {
+            prefs.setUsername("navigation fixture")
+            prefs.setLoggedIn(true)
+            com.example.msdksample.auth.DemoSession.signIn("navigation fixture")
+        }
+        try {
+            ActivityScenario.launch(HomeActivity::class.java).use {
+                onView(withId(R.id.btn_navigation)).perform(click())
+                onView(withText("退出登录")).perform(click())
+                onView(withText("确定")).perform(click())
+                onView(withId(R.id.btn_navigation)).check(matches(isDisplayed()))
+                assertFalse(prefs.isLoggedIn())
+                assertNull(com.example.msdksample.auth.DemoSession.signedInUser)
+                onView(withId(R.id.btn_navigation)).perform(click())
+                onView(withText("登录")).check(matches(isDisplayed()))
+            }
+        } finally { instrumentation.runOnMainSync { prefs.logout(); com.example.msdksample.auth.DemoSession.signOut() } }
+    }
+
     @Test @SdkSuppress(minSdkVersion = 28)
     fun primaryEntriesOpenActualModulesAndBackReturnsHome() {
         // Navigation coverage uses granted location permission; F07 owns its permission UX.
