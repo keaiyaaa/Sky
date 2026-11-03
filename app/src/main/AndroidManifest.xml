@@ -107,12 +107,19 @@
         <activity android:name=".ui.vip.VipActivity" android:screenOrientation="landscape" />
 
         <!-- 设置相关页面 -->
+        <activity android:name=".ui.profile.ProfileActivity" android:screenOrientation="landscape" android:windowSoftInputMode="adjustResize" />
+        <activity android:name=".ui.device.DeviceManagementActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.logs.FlightLogActivity" android:screenOrientation="landscape" android:windowSoftInputMode="adjustResize" />
         <activity android:name=".ui.settings.SettingsActivity" android:screenOrientation="landscape" />
         <activity android:name=".ui.settings.AboutActivity" android:screenOrientation="landscape" />
         <activity android:name=".ui.settings.FlightSettingsActivity" android:screenOrientation="landscape" />
         <activity android:name=".ui.settings.VideoSettingsActivity" android:screenOrientation="landscape" />
         <activity android:name=".ui.settings.UserManualActivity" android:screenOrientation="landscape" />
         <activity android:name=".ui.settings.UpdateCheckActivity" android:screenOrientation="landscape" />
+
+        <!-- 登录/注册页面 -->
+        <activity android:name=".ui.login.LoginActivity" android:screenOrientation="landscape" />
+        <activity android:name=".ui.login.RegisterActivity" android:screenOrientation="landscape" />
 
         <!-- ════════════════════════════════════════════════════════ -->
         <!-- 航拍模块页面（来自 DJI-FLY-aerial） -->

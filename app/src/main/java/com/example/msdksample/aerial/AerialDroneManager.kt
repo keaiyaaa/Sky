@@ -1,6 +1,8 @@
 package com.example.msdksample.aerial
 
 import android.util.Log
+import com.example.msdksample.drone.DroneManager
+import com.example.msdksample.drone.state.DeviceAction
 import dji.sdk.keyvalue.key.CameraKey
 import dji.sdk.keyvalue.key.FlightControllerKey
 import dji.sdk.keyvalue.key.KeyTools
@@ -16,48 +18,36 @@ object AerialDroneManager {
 
     private const val TAG = "AerialDroneManager"
     private const val DEFAULT_SATELLITE_COUNT = 10
-    private val cameraIndex = ComponentIndexType.LEFT_OR_MAIN
+    private val cameraIndex get() = ComponentIndexType.LEFT_OR_MAIN
 
-    private var isSimulatorEnabled = false
+    private fun requireRealDevice(callback: SimulatorCallback?, action: DeviceAction = DeviceAction.PHOTO): Boolean {
+        val manager = DroneManager.getInstance()
+        val generation = manager.deviceStateProvider.currentSnapshot().generation
+        val result = manager.checkDeviceAction(action, generation)
+        if (!result.allowed) callback?.onFailure("设备动作已拒绝：${result.errorCode}")
+        return result.allowed
+    }
 
-    val isSimulatorActive: Boolean get() = isSimulatorEnabled
+    val isSimulatorActive: Boolean get() = DroneManager.getInstance().isDjiSdkSimulatorEnabled() == true
 
-    fun enableSimulator(
-        latitude: Double = 22.58,
-        longitude: Double = 113.93,
-        callback: SimulatorCallback? = null
-    ) {
-        Log.i(TAG, "Starting simulator at ($latitude, $longitude)...")
-        val settings = SimulatorInitializationSettings(latitude, longitude, DEFAULT_SATELLITE_COUNT)
-        val key = KeyTools.createKey(FlightControllerKey.KeyStartSimulator)
-        RxUtil.performActionWithOutResult(key, settings)
-            .subscribe({
-                isSimulatorEnabled = true
-                Log.i(TAG, "Simulator started — drone connected, motors NOT spinning")
-                callback?.onSuccess()
-            }) { error ->
-                val msg = (error as? IDJIError)?.description() ?: error.message ?: "unknown"
-                Log.e(TAG, "Simulator start failed: $msg")
-                callback?.onFailure("启动模拟器失败: $msg")
-            }
+    fun enableSimulator(latitude: Double = 22.58, longitude: Double = 113.93, callback: SimulatorCallback? = null) {
+        // Retain the legacy signature; F02 owns mode switching.
+        if (latitude != 22.58 || longitude != 113.93) {
+            callback?.onFailure("自定义 SDK 模拟位置尚未通过 F02 适配验证")
+            return
+        }
+        DroneManager.getInstance().requestDjiSimulator(true) { success, message ->
+            if (success) callback?.onSuccess() else callback?.onFailure(message ?: "SDK_SIMULATOR_ERROR")
+        }
     }
 
     fun disableSimulator(callback: SimulatorCallback? = null) {
-        val key = KeyTools.createKey(FlightControllerKey.KeyStopSimulator)
-        KeyManager.getInstance().performAction(key, object : CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
-            override fun onSuccess(t: EmptyMsg?) {
-                isSimulatorEnabled = false
-                Log.i(TAG, "Simulator stopped")
-                callback?.onSuccess()
-            }
-            override fun onFailure(error: IDJIError) {
-                Log.e(TAG, "Simulator stop failed: ${error.description()}")
-                callback?.onFailure("停用模拟器失败: ${error.description()}")
-            }
-        })
+        DroneManager.getInstance().requestDjiSimulator(false) { success, message ->
+            if (success) callback?.onSuccess() else callback?.onFailure(message ?: "SDK_SIMULATOR_ERROR")
+        }
     }
-
     fun startShootPhoto(callback: SimulatorCallback? = null) {
+        if (!requireRealDevice(callback)) return
         val key = KeyTools.createKey(CameraKey.KeyStartShootPhoto, cameraIndex)
         KeyManager.getInstance().performAction(key, object : CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
             override fun onSuccess(t: EmptyMsg?) {
@@ -72,6 +62,7 @@ object AerialDroneManager {
     }
 
     fun startRecordVideo(callback: SimulatorCallback? = null) {
+        if (!requireRealDevice(callback, DeviceAction.VIDEO)) return
         val key = KeyTools.createKey(CameraKey.KeyStartRecord, cameraIndex)
         KeyManager.getInstance().performAction(key, object : CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
             override fun onSuccess(t: EmptyMsg?) {
@@ -86,6 +77,7 @@ object AerialDroneManager {
     }
 
     fun stopRecordVideo(callback: SimulatorCallback? = null) {
+        if (!requireRealDevice(callback, DeviceAction.VIDEO)) return
         val key = KeyTools.createKey(CameraKey.KeyStopRecord, cameraIndex)
         KeyManager.getInstance().performAction(key, object : CommonCallbacks.CompletionCallbackWithParam<EmptyMsg> {
             override fun onSuccess(t: EmptyMsg?) {
@@ -100,6 +92,7 @@ object AerialDroneManager {
     }
 
     fun setCameraModeToPhoto(callback: SimulatorCallback? = null) {
+        if (!requireRealDevice(callback)) return
         val key = KeyTools.createKey(CameraKey.KeyCameraMode, cameraIndex)
         KeyManager.getInstance().setValue(key, dji.sdk.keyvalue.value.camera.CameraMode.PHOTO_NORMAL, object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {
@@ -114,6 +107,7 @@ object AerialDroneManager {
     }
 
     fun setCameraModeToVideo(callback: SimulatorCallback? = null) {
+        if (!requireRealDevice(callback, DeviceAction.VIDEO)) return
         val key = KeyTools.createKey(CameraKey.KeyCameraMode, cameraIndex)
         KeyManager.getInstance().setValue(key, dji.sdk.keyvalue.value.camera.CameraMode.VIDEO_NORMAL, object : CommonCallbacks.CompletionCallback {
             override fun onSuccess() {

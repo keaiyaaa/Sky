@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-        android:layout_width="420dp"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+<LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_card_white"
@@ -49,7 +52,7 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:text="开启模拟器"
+                android:text="开启本地演示"
                 android:textSize="12sp"
                 android:textColor="@color/white"
                 android:background="@drawable/bg_vip"
@@ -63,7 +66,7 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:gravity="center"
-                android:text="关闭模拟器"
+                android:text="关闭本地演示"
                 android:textSize="12sp"
                 android:textColor="@color/gray_700"
                 android:background="@drawable/bg_card_gray"
@@ -72,10 +75,26 @@
                 android:focusable="true" />
     </LinearLayout>
 
+    <Button
+            android:id="@+id/btn_test_reconnect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="等待连接／重连" />
+    <Button
+            android:id="@+id/btn_test_cancel_wait"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="取消连接等待" />
+    <Button
+            android:id="@+id/btn_test_scenario"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="本地演示连接场景" />
+
     <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="提示：隐藏入口，再次连续点击首页「设备状态」卡片 5 次可打开本面板"
+            android:text="提示：Debug 版连续点击首页「设备状态」标题 5 次可打开本面板"
             android:textSize="10sp"
             android:textColor="@color/gray_500"
             android:layout_marginTop="12dp" />
@@ -93,3 +112,4 @@
             android:clickable="true"
             android:focusable="true" />
 </LinearLayout>
+</ScrollView>

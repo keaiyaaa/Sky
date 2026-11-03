@@ -18,7 +18,8 @@
 
     <ScrollView
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
             android:padding="16dp">
 
         <LinearLayout
@@ -392,6 +393,14 @@
             </androidx.cardview.widget.CardView>
 
             <!-- 保存按钮 -->
+            <TextView
+                    android:id="@+id/tv_sync_status"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    android:text="当前显示本地设置，设备尚未确认。连接后请点击保存并同步。"
+                    android:textColor="@color/gray_700"
+                    android:textSize="13sp" />
             <Button
                     android:id="@+id/btn_save"
                     android:layout_width="match_parent"

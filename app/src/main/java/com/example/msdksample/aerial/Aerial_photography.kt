@@ -21,10 +21,34 @@ import com.example.msdksample.drone.command.SimulatedFlightCommandExecutor
 import com.example.msdksample.aerial.camera.CameraAction
 import com.example.msdksample.aerial.camera.CameraOperationController
 import com.example.msdksample.aerial.camera.DjiCameraGateway
+import com.example.msdksample.drone.DroneManager
+import com.example.msdksample.drone.FlightTelemetry
 
 class Aerial_photography : AppCompatActivity() {
     private lateinit var binding: ActivityAerialPhotographyBinding
     private val handler = Handler(Looper.getMainLooper())
+    private val telemetryListener = DroneManager.TelemetryListener { sample ->
+        runOnUiThread { if (::binding.isInitialized && !isDestroyed) renderFlightTelemetry(sample) }
+    }
+
+    private fun renderFlightTelemetry(sample: FlightTelemetry) {
+        fun value(number: Float?) = number?.let { String.format(Locale.CHINA, "%.1f", it) } ?: "--"
+        binding.tvHeight.text = "${value(sample.altitudeMeters)}m"
+        binding.tvDistance.text = "${value(sample.distanceMeters)}m"
+        binding.tvSpeed.text = "${value(sample.speedMetersPerSecond)}m/s"
+        binding.tvBattery.text = sample.batteryPercent?.let { "$it%" } ?: "--%"
+        binding.tvTelemetrySource.text = "${sample.sourceLabel} · 画面为演示"
+    }
+
+    override fun onStart() {
+        super.onStart()
+        if (::binding.isInitialized) DroneManager.getInstance().addTelemetryListener(telemetryListener)
+    }
+
+    override fun onStop() {
+        DroneManager.getInstance().removeTelemetryListener(telemetryListener)
+        super.onStop()
+    }
     private var isControlMode = false
     private var voiceTimer: Long = 0
     private var currentPhotoUri: Uri? = null

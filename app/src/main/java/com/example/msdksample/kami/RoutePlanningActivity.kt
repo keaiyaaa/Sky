@@ -21,6 +21,7 @@ import com.mapbox.mapboxsdk.WellKnownTileServer
 import com.mapbox.mapboxsdk.maps.MapView
 import com.example.msdksample.R
 import com.example.msdksample.drone.DroneManager
+import com.example.msdksample.data.local.LocalDataStore
 import com.example.msdksample.drone.NavPoint
 import com.example.msdksample.drone.ObstacleAvoidanceMonitor
 import com.example.msdksample.drone.SimulatedFlightEngine
@@ -98,6 +99,7 @@ class RoutePlanningActivity : AppCompatActivity() {
 
     // ── 避障：航线阶段监控 + 模拟器模式演示 ─────────────────────
     private var simFlightEngine: SimulatedFlightEngine? = null
+    private var simLogTaskId = ""
     private var simFlightJob: Job? = null
     private var obstacleQueryCounter = 0
 
@@ -660,6 +662,7 @@ class RoutePlanningActivity : AppCompatActivity() {
         }
 
         val navPoints = waypointList.map { NavPoint(it.latitude, it.longitude, it.altitude) }
+        simLogTaskId = currentRoute?.id.orEmpty()
         val monitor = ObstacleAvoidanceMonitor()
         val engine = SimulatedFlightEngine(
             waypoints = navPoints,
@@ -680,13 +683,20 @@ class RoutePlanningActivity : AppCompatActivity() {
         btnAction.isEnabled = false
         tvObstacleStatus.text = getString(R.string.obstacle_status_demo_started)
         engine.start()
+        recordSimFlightEvent("开始模拟巡检", "开始")
         simFlightJob = activityScope.launch {
             while (engine.isRunning) {
+                if (DroneManager.getInstance().getRuntimeMode() != DroneManager.RuntimeMode.SIM_ONLY) {
+                    engine.stop()
+                    recordSimFlightEvent("模拟巡检中断", "中断", "本地演示连接已断开")
+                    break
+                }
                 engine.tick()
                 delay(1000L)
             }
             btnAction.isEnabled = true
             if (engine.isFinished) {
+                recordSimFlightEvent("模拟巡检结束", "完成")
                 tvObstacleStatus.text = getString(R.string.obstacle_status_demo_finished)
             }
         }
@@ -694,6 +704,7 @@ class RoutePlanningActivity : AppCompatActivity() {
 
     /** 停止模拟避障演示并复位状态（onDestroy / 取消时调用） */
     private fun stopSimulatedDemo() {
+        if (simFlightEngine?.isRunning == true) recordSimFlightEvent("停止模拟巡检", "中断", "页面关闭或任务取消")
         simFlightJob?.cancel()
         simFlightJob = null
         simFlightEngine?.stop()
@@ -701,6 +712,11 @@ class RoutePlanningActivity : AppCompatActivity() {
         if (::tvObstacleStatus.isInitialized) {
             tvObstacleStatus.text = getString(R.string.obstacle_status_idle)
         }
+    }
+
+    private fun recordSimFlightEvent(action: String, result: String, detail: String = "") {
+        runCatching { LocalDataStore.getInstance(this).record("任务", action, result, "本地演示", detail, simLogTaskId) }
+            .onFailure { android.util.Log.e("RoutePlanning", "记录模拟飞行事件失败", it) }
     }
 
     private fun updateInfoBar() {

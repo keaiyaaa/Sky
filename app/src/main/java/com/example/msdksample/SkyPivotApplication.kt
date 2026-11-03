@@ -7,6 +7,7 @@ import android.os.Looper
 import android.util.Log
 import com.cySdkyc.clx.Helper
 import com.example.msdksample.drone.DroneManager
+import com.example.msdksample.drone.DjiSdkRuntime
 
 /**
  * 统一 Application 入口。
@@ -39,6 +40,10 @@ class SkyPivotApplication : Application() {
 
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
+        if (!DjiSdkRuntime.supported) {
+            Log.i(TAG, DjiSdkRuntime.UNAVAILABLE_MESSAGE)
+            return
+        }
         // DJI MSDK v5（≥5.10.0）加固库：必须先于任何 MSDK API 调用执行解密注入
         try {
             Helper.install(this)

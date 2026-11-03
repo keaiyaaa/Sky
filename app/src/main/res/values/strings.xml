@@ -6,7 +6,7 @@
     <string name="action_settings">设置</string>
 
     <!-- 首页 -->
-    <string name="drone_status">Drone Status</string>
+    <string name="drone_status">设备状态</string>
     <string name="start_flight">开始飞行</string>
     <string name="route_plan">规划航线</string>
     <string name="manual_control">手动接管</string>
@@ -30,7 +30,7 @@
     <string name="flight_failsafe">失控行为</string>
     <string name="flight_failsafe_desc">信号丢失时无人机的行为</string>
     <string name="flight_beginner">新手模式</string>
-    <string name="flight_beginner_desc">开启后飞行距离和高度限制在30米内</string>
+    <string name="flight_beginner_desc">本地返航高度选项限制为30米，设备限制仍需同步与真机验证</string>
     <string name="flight_obstacle">避障行为</string>
     <string name="flight_obstacle_desc">检测到障碍物时的处理方式</string>
     <string name="flight_sensitivity">操控灵敏度</string>
