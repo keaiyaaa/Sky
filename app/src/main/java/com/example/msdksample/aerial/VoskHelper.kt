@@ -3,6 +3,7 @@ package com.example.msdksample.aerial
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.Build
 import android.util.Log
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -52,7 +53,18 @@ object VoskHelper {
 
     fun isInitializing(): Boolean = isInitializing
 
+    /**
+     * 在兼容主机初始化离线语音模型，不兼容的 ARM 转译环境直接反馈并保留文字指令。
+     * @param {Context} context 用于获取模型存储目录的 Android 上下文。
+     * @param {VoskInitCallback} callback 下载、初始化结果或不可用原因的回调。
+     * @return {Unit} 启动模型加载或同步返回不可用结果；不兼容环境不启动原生加载线程。
+     */
     fun init(context: Context, callback: VoskInitCallback) {
+        // 当前 APK 仅打包 ARM64 语音库；x86 的 ARM 转译无法保证其指令集，SIGILL 无法被异常捕获。
+        if (Build.SUPPORTED_ABIS.firstOrNull() != "arm64-v8a") {
+            callback.onError("当前设备不支持离线语音识别，请使用文字指令")
+            return
+        }
         if (isReady) {
             callback.onInitialized()
             return

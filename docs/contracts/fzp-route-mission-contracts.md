@@ -37,7 +37,7 @@ runtime.cancel()
 | `mission_run_waypoints` | 启动时的有序航点快照和原航点标识、坐标、高度、动作 | 与运行记录外键关联；不随原航线修改或删除 |
 | `mission_run_events` | 状态转换、到点结果、业务原因及发生时间 | 与状态和进度在同一事务内提交；运行内序号唯一 |
 
-`MissionRunRepository.history(limit, offset)` 查询分页历史；`get(runId)` 查询单条结果；`waypoints(runId)` 获取启动快照；`events(runId)` 获取时间线。F14/F21 可直接读取这些正式记录，必须保留 `LOCAL_SIMULATION` 来源，不复制为真实飞行记录，也不自动生成真实拍照或 AI 结论。
+`MissionRunRepository.history(limit, offset)` 查询分页历史；`get(runId)` 查询单条结果；`waypoints(runId)` 获取启动快照；`events(runId)` 获取时间线；`logs(keyword, source, limit)` 提供飞行日志的只读事件视图，关键词按字面量匹配。F21 飞行日志已接入该视图，与连接和设置事件按时间合并，本地巡检保留“本地演示”来源，不跨数据库重复写入。F14 可继续按运行 ID 读取同一份正式快照，不能复制为真实飞行记录，也不自动生成真实拍照或 AI 结论。
 
 ## 本轮完成范围与外部条件
 

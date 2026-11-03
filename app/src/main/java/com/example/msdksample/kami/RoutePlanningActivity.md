@@ -35,4 +35,4 @@ startActivity(Intent(this, RoutePlanningActivity::class.java))
 
 ## 对外联动
 
-页面通过 `RouteMapCallbacks` 接收地图事件；通过 `LocalMissionRuntime.state` 订阅已持久化的执行结果。任务启动只传航线稳定标识，执行器重新读取数据库快照，不信任页面传入的未保存列表。任务中心或飞行日志可通过 `MissionRunRepository.history()`、`get()`、`waypoints()`、`events()` 使用同一份来源明确的记录，无需复制演示数据。
+页面通过 `RouteMapCallbacks` 接收地图事件；通过 `LocalMissionRuntime.state` 订阅已持久化的执行结果。任务启动只传航线稳定标识，执行器重新读取数据库快照，不信任页面传入的未保存列表。飞行日志已通过 `MissionRunRepository.logs()` 查询同一份正式事件。任务中心还可通过 `history()`、`get()`、`waypoints()`、`events()` 接入来源明确的记录，无需复制演示数据。
