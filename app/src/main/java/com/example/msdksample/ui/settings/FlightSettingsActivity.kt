@@ -1,12 +1,8 @@
 package com.example.msdksample.ui.settings
 
-import android.os.Bundle
 import android.view.View
-import android.widget.RadioButton
-import android.widget.RadioGroup
 import android.widget.SeekBar
 import android.widget.Toast
-import androidx.appcompat.widget.SwitchCompat
 import com.example.msdksample.R
 import com.example.msdksample.base.BaseActivity
 import com.example.msdksample.databinding.ActivityFlightSettingsBinding
@@ -16,11 +12,16 @@ import com.example.msdksample.utils.PreferenceManager
 class FlightSettingsActivity : BaseActivity<ActivityFlightSettingsBinding>() {
 
     private lateinit var prefs: PreferenceManager
+    private lateinit var sync: SettingsSyncController
 
     override fun getViewBinding() = ActivityFlightSettingsBinding.inflate(layoutInflater)
 
     override fun initViews() {
         prefs = PreferenceManager.getInstance(this)
+        sync = SettingsSyncController(this) { text, busy ->
+            binding.tvSyncStatus.text = text
+            binding.btnSave.isEnabled = !busy
+        }
 
         // 设置工具栏
         setSupportActionBar(binding.toolbar)
@@ -37,7 +38,7 @@ class FlightSettingsActivity : BaseActivity<ActivityFlightSettingsBinding>() {
 
     private fun loadSettings() {
         // 返航高度
-        val altitude = prefs.getReturnAltitude()
+        val altitude = prefs.getReturnAltitude().coerceIn(20, if (prefs.isBeginnerMode()) 30 else 400)
         binding.sbAltitude.progress = altitude - 20 // 20-400, 范围380
         binding.tvAltitudeValue.text = "${altitude}m"
 
@@ -71,6 +72,10 @@ class FlightSettingsActivity : BaseActivity<ActivityFlightSettingsBinding>() {
         // 返航高度
         binding.sbAltitude.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (binding.switchBeginner.isChecked && progress > 10) {
+                    binding.sbAltitude.progress = 10
+                    return
+                }
                 val altitude = progress + 20
                 binding.tvAltitudeValue.text = "${altitude}m"
             }
@@ -119,35 +124,19 @@ class FlightSettingsActivity : BaseActivity<ActivityFlightSettingsBinding>() {
         val sensitivity = binding.sbSensitivity.progress
         prefs.setControlSensitivity(sensitivity)
 
-        // 2. 同步到无人机
+        // Each value must receive its own confirmation before reporting success.
         val droneManager = DroneManager.getInstance()
-        if (droneManager.isConnected()) {
-            droneManager.setReturnAltitude(altitude) { success, error ->
-                if (!success) showToast("返航高度同步失败: $error")
-            }
-            droneManager.setFailsafeAction(failsafeAction) { success, error ->
-                if (!success) showToast("失控行为同步失败: $error")
-            }
-            droneManager.setBeginnerMode(beginnerMode) { success, error ->
-                if (!success) showToast("新手模式同步失败: $error")
-            }
-            droneManager.setObstacleAction(obstacleAction) { success, error ->
-                if (!success) showToast("避障行为同步失败: $error")
-            }
-            droneManager.setControlSensitivity(sensitivity) { success, error ->
-                if (!success) showToast("灵敏度同步失败: $error")
-            }
-            showToast("设置已保存并同步到无人机")
-        } else {
-            showToast("无人机未连接，设置已保存，连接后将自动同步")
-        }
-    }
-
-    private fun showToast(message: String) {
-        Toast.makeText(this, message, Toast.LENGTH_SHORT).show()
+        sync.start(listOf(
+            SettingOperation("返航高度", "${altitude}m") { droneManager.setReturnAltitude(altitude, it) },
+            SettingOperation("失控行为", mapOf("rth" to "返航", "hover" to "悬停", "land" to "降落").getValue(failsafeAction)) { droneManager.setFailsafeAction(failsafeAction, it) },
+            SettingOperation("新手模式", if (beginnerMode) "开启" else "关闭") { droneManager.setBeginnerMode(beginnerMode, it) },
+            SettingOperation("避障行为", if (obstacleAction == "brake") "刹停" else "绕行") { droneManager.setObstacleAction(obstacleAction, it) },
+            SettingOperation("灵敏度", "$sensitivity%") { droneManager.setControlSensitivity(sensitivity, it) }
+        ))
     }
 
     override fun onDestroy() {
+        sync.detach()
         super.onDestroy()
     }
 }

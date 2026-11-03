@@ -56,6 +56,8 @@ class SettingsActivity : BaseActivity<ActivitySettingsBinding>() {
         selectedMenu.background = getDrawable(R.drawable.bg_menu_active)
     }
 
+    override fun onResume() { super.onResume(); selectMenu(0) }
+
     private fun showFragment() {
         supportFragmentManager.beginTransaction()
             .replace(R.id.content_frame, AccountFragment())

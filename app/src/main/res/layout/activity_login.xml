@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+              android:layout_width="match_parent"
+              android:layout_height="match_parent"
+              android:orientation="horizontal"
+              android:background="@color/white">
+
+    <!-- ══════════ 左侧品牌面板 ══════════ -->
+    <LinearLayout
+            android:layout_width="240dp"
+            android:layout_height="match_parent"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:padding="24dp"
+            android:background="@drawable/bg_login_left">
+
+        <LinearLayout
+                android:layout_width="88dp"
+                android:layout_height="88dp"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:background="@drawable/bg_drone_icon"
+                android:elevation="6dp">
+
+            <ImageView
+                    android:layout_width="56dp"
+                    android:layout_height="56dp"
+                    android:src="@drawable/ic_drone"
+                    android:contentDescription="无人机图标" />
+        </LinearLayout>
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="天枢巡检系统"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:textColor="@color/white" />
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:gravity="center"
+                android:lineSpacingExtra="3dp"
+                android:text="专业无人机巡检平台\n智能 · 高效 · 安全"
+                android:textSize="11sp"
+                android:textColor="#B3FFFFFF" />
+
+        <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="5dp"
+                android:text="V2.4.0"
+                android:textSize="9sp"
+                android:textColor="#99FFFFFF"
+                android:letterSpacing="0.1"
+                android:background="@drawable/bg_version_pill" />
+    </LinearLayout>
+
+    <!-- ══════════ 右侧登录面板 ══════════ -->
+    <ScrollView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:fillViewport="true"
+            android:scrollbars="vertical">
+
+        <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:paddingHorizontal="36dp"
+                android:paddingVertical="20dp">
+
+            <!-- 标题 -->
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="欢迎登录"
+                    android:textSize="19sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/gray_800" />
+
+            <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="请选择登录方式"
+                    android:textSize="11sp"
+                    android:textColor="@color/gray_500" />
+
+            <!-- 登录方式切换标签 -->
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal"
+                    android:padding="3dp"
+                    android:background="@drawable/bg_tab_container">
+
+                <TextView
+                        android:id="@+id/tab_phone"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="8dp"
+                        android:text="手机号"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/brand_green"
+                        android:background="@drawable/bg_tab_active"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                <TextView
+                        android:id="@+id/tab_wechat"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="8dp"
+                        android:text="微信"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/gray_600"
+                        android:clickable="true"
+                        android:focusable="true" />
+
+                <TextView
+                        android:id="@+id/tab_qq"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:paddingVertical="8dp"
+                        android:text="QQ"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/gray_600"
+                        android:clickable="true"
+                        android:focusable="true" />
+            </LinearLayout>
+
+            <!-- 手机号登录表单 -->
+            <LinearLayout
+                    android:id="@+id/panel_phone"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical">
+
+                <EditText
+                        android:id="@+id/et_phone"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:hint="请输入手机号"
+                        android:inputType="phone"
+                        android:maxLength="11"
+                        android:textSize="13sp"
+                        android:paddingHorizontal="12dp"
+                        android:paddingVertical="10dp"
+                        android:background="@drawable/bg_input_field" />
+
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                    <EditText
+                            android:id="@+id/et_code"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:hint="请输入验证码"
+                            android:inputType="number"
+                            android:maxLength="6"
+                            android:textSize="13sp"
+                            android:paddingHorizontal="12dp"
+                            android:paddingVertical="10dp"
+                            android:background="@drawable/bg_input_field" />
+
+                    <TextView
+                            android:id="@+id/btn_get_code"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="8dp"
+                            android:paddingHorizontal="10dp"
+                            android:paddingVertical="10dp"
+                            android:text="获取验证码"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/brand_green"
+                            android:background="@drawable/bg_code_btn"
+                            android:clickable="true"
+                            android:focusable="true" />
+                </LinearLayout>
+
+                <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                    <CheckBox
+                            android:id="@+id/cb_auto_login"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="7天自动登录"
+                            android:textSize="11sp"
+                            android:textColor="@color/gray_600"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp" />
+
+                    <View
+                            android:layout_width="0dp"
+                            android:layout_height="1dp"
+                            android:layout_weight="1" />
+
+                    <TextView
+                            android:id="@+id/tv_forgot_password"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="忘记密码?"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/brand_green"
+                            android:clickable="true"
+                            android:focusable="true" />
+                </LinearLayout>
+
+                <TextView
+                        android:id="@+id/btn_login"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="18dp"
+                        android:gravity="center"
+                        android:paddingVertical="11dp"
+                        android:text="登  录"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:background="@drawable/bg_login_btn"
+                        android:elevation="3dp"
+                        android:clickable="true"
+                        android:focusable="true" />
+            </LinearLayout>
+
+            <!-- 微信登录面板 -->
+            <LinearLayout
+                    android:id="@+id/panel_wechat"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:visibility="gone">
+
+                <LinearLayout
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:background="@drawable/bg_social_green"
+                        android:elevation="3dp">
+
+                    <ImageView
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:src="@drawable/ic_wechat"
+                            android:contentDescription="微信" />
+                </LinearLayout>
+
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="使用微信扫一扫登录"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/gray_700" />
+
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="打开微信 > 发现 > 扫一扫"
+                        android:textSize="10sp"
+                        android:textColor="@color/gray_400" />
+
+                <TextView
+                        android:id="@+id/btn_confirm_wechat"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:gravity="center"
+                        android:paddingVertical="11dp"
+                        android:text="确认登录"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:background="@drawable/bg_login_btn"
+                        android:clickable="true"
+                        android:focusable="true" />
+            </LinearLayout>
+
+            <!-- QQ登录面板 -->
+            <LinearLayout
+                    android:id="@+id/panel_qq"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:visibility="gone">
+
+                <LinearLayout
+                        android:layout_width="76dp"
+                        android:layout_height="76dp"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:background="@drawable/bg_social_blue"
+                        android:elevation="3dp">
+
+                    <ImageView
+                            android:layout_width="44dp"
+                            android:layout_height="44dp"
+                            android:src="@drawable/ic_qq"
+                            android:contentDescription="QQ" />
+                </LinearLayout>
+
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="使用QQ扫码登录"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/gray_700" />
+
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="打开手机QQ > 扫一扫"
+                        android:textSize="10sp"
+                        android:textColor="@color/gray_400" />
+
+                <TextView
+                        android:id="@+id/btn_confirm_qq"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="14dp"
+                        android:gravity="center"
+                        android:paddingVertical="11dp"
+                        android:text="确认登录"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/white"
+                        android:background="@drawable/bg_login_btn"
+                        android:clickable="true"
+                        android:focusable="true" />
+            </LinearLayout>
+
+            <!-- 分隔线 -->
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="18dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1"
+                        android:background="@color/gray_200" />
+
+                <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:paddingHorizontal="10dp"
+                        android:text="其他登录方式"
+                        android:textSize="10sp"
+                        android:textColor="@color/gray_400" />
+
+                <View
+                        android:layout_width="0dp"
+                        android:layout_height="1dp"
+                        android:layout_weight="1"
+                        android:background="@color/gray_200" />
+            </LinearLayout>
+
+            <!-- 社交登录按钮 -->
+            <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                <ImageView
+                        android:id="@+id/btn_social_wechat"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:padding="10dp"
+                        android:src="@drawable/ic_wechat"
+                        android:background="@drawable/bg_social_green"
+                        android:contentDescription="微信登录" />
+
+                <ImageView
+                        android:id="@+id/btn_social_qq"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:layout_marginStart="20dp"
+                        android:padding="10dp"
+                        android:src="@drawable/ic_qq"
+                        android:background="@drawable/bg_social_blue"
+                        android:contentDescription="QQ登录" />
+
+                <ImageView
+                        android:id="@+id/btn_social_apple"
+                        android:layout_width="42dp"
+                        android:layout_height="42dp"
+                        android:layout_marginStart="20dp"
+                        android:padding="10dp"
+                        android:src="@drawable/ic_apple"
+                        android:background="@drawable/bg_social_gray"
+                        android:contentDescription="Apple登录" />
+            </LinearLayout>
+
+            <!-- 注册链接 -->
+            <TextView
+                    android:id="@+id/tv_go_register"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="14dp"
+                    android:layout_gravity="center_horizontal"
+                    android:text="未有账号？ 立即注册"
+                    android:textSize="12sp"
+                    android:textColor="@color/gray_600"
+                    android:clickable="true"
+                    android:focusable="true" />
+
+            <!-- 返回设置页 -->
+            <TextView
+                    android:id="@+id/tv_back_settings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:layout_marginBottom="4dp"
+                    android:layout_gravity="center_horizontal"
+                    android:text="← 返回设置页"
+                    android:textSize="10sp"
+                    android:textColor="@color/gray_400"
+                    android:clickable="true"
+                    android:focusable="true" />
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

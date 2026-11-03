@@ -1,8 +1,5 @@
 package com.example.msdksample.ui.settings
 
-import android.widget.RadioGroup
-import android.widget.Toast
-import androidx.appcompat.widget.SwitchCompat
 import com.example.msdksample.R
 import com.example.msdksample.base.BaseActivity
 import com.example.msdksample.databinding.ActivityVideoSettingsBinding
@@ -12,11 +9,16 @@ import com.example.msdksample.utils.PreferenceManager
 class VideoSettingsActivity : BaseActivity<ActivityVideoSettingsBinding>() {
 
     private lateinit var prefs: PreferenceManager
+    private lateinit var sync: SettingsSyncController
 
     override fun getViewBinding() = ActivityVideoSettingsBinding.inflate(layoutInflater)
 
     override fun initViews() {
         prefs = PreferenceManager.getInstance(this)
+        sync = SettingsSyncController(this) { text, busy ->
+            binding.tvSyncStatus.text = text
+            binding.btnSave.isEnabled = !busy
+        }
 
         // 设置工具栏
         setSupportActionBar(binding.toolbar)
@@ -82,23 +84,16 @@ class VideoSettingsActivity : BaseActivity<ActivityVideoSettingsBinding>() {
 
         // 同步到无人机
         val droneManager = DroneManager.getInstance()
-        if (droneManager.isConnected()) {
-            droneManager.setVideoQuality(videoQuality) { success, error ->
-                if (!success) Toast.makeText(this@VideoSettingsActivity, "视频画质同步失败: $error", Toast.LENGTH_SHORT).show()
-            }
-            droneManager.setImageQuality(imageQuality) { success, error ->
-                if (!success) Toast.makeText(this@VideoSettingsActivity, "图片画质同步失败: $error", Toast.LENGTH_SHORT).show()
-            }
-            droneManager.setAutoSyncEnabled(binding.switchAutoSync.isChecked) { success, error ->
-                if (!success) Toast.makeText(this@VideoSettingsActivity, "自动同步设置失败: $error", Toast.LENGTH_SHORT).show()
-            }
-            droneManager.setLowBatteryReturnEnabled(binding.switchLowBattery.isChecked) { success, error ->
-                if (!success) Toast.makeText(this@VideoSettingsActivity, "低电量返航同步失败: $error", Toast.LENGTH_SHORT).show()
-            }
-            Toast.makeText(this, "设置已保存并同步到无人机", Toast.LENGTH_SHORT).show()
-        } else {
-            Toast.makeText(this, "设置已保存（无人机未连接）", Toast.LENGTH_SHORT).show()
-        }
+        val autoSync = binding.switchAutoSync.isChecked
+        val lowBattery = binding.switchLowBattery.isChecked
+        val videoLabels = mapOf("smooth" to "流畅", "hd" to "高清", "ultra" to "超清", "4k" to "4K")
+        val imageLabels = mapOf("standard" to "标准", "hd" to "高清", "ultra" to "超清")
+        sync.start(listOf(
+            SettingOperation("视频画质", videoLabels.getValue(videoQuality)) { droneManager.setVideoQuality(videoQuality, it) },
+            SettingOperation("图片画质", imageLabels.getValue(imageQuality)) { droneManager.setImageQuality(imageQuality, it) },
+            SettingOperation("自动同步", if (autoSync) "开启" else "关闭") { droneManager.setAutoSyncEnabled(autoSync, it) },
+            SettingOperation("低电量返航", if (lowBattery) "开启" else "关闭") { droneManager.setLowBatteryReturnEnabled(lowBattery, it) }
+        ))
     }
 
     private fun updateVideoPreview(quality: String) {
@@ -109,4 +104,6 @@ class VideoSettingsActivity : BaseActivity<ActivityVideoSettingsBinding>() {
             else -> previewContainer?.setBackgroundResource(R.drawable.bg_primary_rounded)
         }
     }
+
+    override fun onDestroy() { sync.detach(); super.onDestroy() }
 }

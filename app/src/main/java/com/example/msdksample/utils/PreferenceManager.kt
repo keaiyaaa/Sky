@@ -24,6 +24,16 @@ class PreferenceManager private constructor(context: Context) {
         const val KEY_LOW_BATTERY_RETURN = "low_battery_return"
         const val KEY_CURRENT_DEVICE_ID = "current_device_id"
 
+        // 用户会话
+        const val KEY_IS_LOGGED_IN = "is_logged_in"
+        const val KEY_USERNAME = "username"
+        const val KEY_USER_PHONE = "user_phone"
+        const val KEY_AUTO_LOGIN = "auto_login"
+        const val KEY_LOGIN_TIME = "login_time"
+        const val KEY_REGISTERED_USERNAME = "registered_username"
+        const val KEY_REGISTERED_PHONE = "registered_phone"
+        const val KEY_REGISTERED_PASSWORD = "registered_password"
+
         @Volatile
         private var instance: PreferenceManager? = null
 
@@ -66,4 +76,41 @@ class PreferenceManager private constructor(context: Context) {
     // 设备管理
     fun getCurrentDeviceId(): Long = prefs.getLong(KEY_CURRENT_DEVICE_ID, -1L)
     fun setCurrentDeviceId(deviceId: Long) = prefs.edit().putLong(KEY_CURRENT_DEVICE_ID, deviceId).apply()
+
+    // 用户会话
+    fun isLoggedIn(): Boolean = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
+    fun setLoggedIn(loggedIn: Boolean) = prefs.edit().putBoolean(KEY_IS_LOGGED_IN, loggedIn).apply()
+
+    fun getUsername(): String = prefs.getString(KEY_USERNAME, "") ?: ""
+    fun setUsername(name: String) = prefs.edit().putString(KEY_USERNAME, name).apply()
+
+    fun getUserPhone(): String = prefs.getString(KEY_USER_PHONE, "") ?: ""
+    fun setUserPhone(phone: String) = prefs.edit().putString(KEY_USER_PHONE, phone).apply()
+
+    fun isAutoLoginEnabled(): Boolean = prefs.getBoolean(KEY_AUTO_LOGIN, false)
+    fun setAutoLoginEnabled(enabled: Boolean) = prefs.edit().putBoolean(KEY_AUTO_LOGIN, enabled).apply()
+
+    fun getLoginTime(): Long = prefs.getLong(KEY_LOGIN_TIME, 0L)
+    fun setLoginTime(time: Long) = prefs.edit().putLong(KEY_LOGIN_TIME, time).apply()
+
+    // 注册账号（本地演示存储）
+    fun getRegisteredUsername(): String = prefs.getString(KEY_REGISTERED_USERNAME, "") ?: ""
+    fun setRegisteredUsername(name: String) = prefs.edit().putString(KEY_REGISTERED_USERNAME, name).apply()
+
+    fun getRegisteredPhone(): String = prefs.getString(KEY_REGISTERED_PHONE, "") ?: ""
+    fun setRegisteredPhone(phone: String) = prefs.edit().putString(KEY_REGISTERED_PHONE, phone).apply()
+
+    fun getRegisteredPassword(): String = prefs.getString(KEY_REGISTERED_PASSWORD, "") ?: ""
+    fun setRegisteredPassword(password: String) = prefs.edit().putString(KEY_REGISTERED_PASSWORD, password).apply()
+
+    // 退出登录
+    fun logout() {
+        prefs.edit()
+            .putBoolean(KEY_IS_LOGGED_IN, false)
+            .putBoolean(KEY_AUTO_LOGIN, false)
+            .remove(KEY_USERNAME)
+            .remove(KEY_USER_PHONE)
+            .remove(KEY_LOGIN_TIME)
+            .apply()
+    }
 }

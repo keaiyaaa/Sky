@@ -17,6 +17,8 @@ import com.example.msdksample.kami.model.GeoMath
 import com.mapbox.mapboxsdk.maps.MapView
 import com.mapbox.mapboxsdk.geometry.LatLng
 import java.util.concurrent.atomic.AtomicReference
+import com.example.msdksample.ui.logs.FlightLogActivity
+import org.hamcrest.Matchers.allOf
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -90,6 +92,14 @@ class RouteWorkflowInstrumentedTest {
                 onView(withText("关闭")).perform(click())
                 scenario.recreate()
                 eventually { onView(withId(R.id.tvObstacleStatus)).check(matches(withSubstring("模拟完成"))) }
+                ActivityScenario.launch(FlightLogActivity::class.java).use {
+                    onView(withId(R.id.log_keyword)).perform(scrollTo(), replaceText(completed.id), closeSoftKeyboard())
+                    onView(withText("查询／刷新")).perform(scrollTo(), click())
+                    eventually {
+                        onView(allOf(withSubstring(completed.id), withSubstring("模拟完成")))
+                            .perform(scrollTo()).check(matches(isDisplayed()))
+                    }
+                }
             }
         } finally {
             if (runtime.state.value?.routeId == route.id && runtime.state.value?.state?.isActive == true) runBlocking { runtime.cancel() }

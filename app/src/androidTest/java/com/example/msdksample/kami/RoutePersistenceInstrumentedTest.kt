@@ -120,6 +120,9 @@ class RoutePersistenceInstrumentedTest {
         assertEquals(2, runs.waypoints(created.id).size)
         assertEquals(2, runs.events(created.id).size)
         assertTrue(runs.get(created.id)!!.endedAt > 0)
+        assertEquals(2, runs.logs(created.id, "本地演示").size)
+        assertTrue(runs.logs(created.id, "设备连接").isEmpty())
+        assertTrue(runs.logs("' OR 1=1 --").isEmpty())
     }
 
     /**

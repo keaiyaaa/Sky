@@ -9,6 +9,7 @@ import com.example.msdksample.kami.model.RouteSafetyValidator
 import com.example.msdksample.kami.model.Waypoint
 import java.io.Closeable
 import java.util.UUID
+import com.example.msdksample.data.local.FlightLogEntry
 
 /**
  * 使用正式航线数据库持久化模拟执行快照、进度和事件，不创建演示种子数据。
@@ -104,6 +105,40 @@ class MissionRunRepository(context: Context) : Closeable {
                 MissionRunState.valueOf(rows.getString(rows.getColumnIndexOrThrow("state"))),
                 rows.getString(rows.getColumnIndexOrThrow("message")),
                 rows.getLong(rows.getColumnIndexOrThrow("occurred_at"))))
+        }
+    }
+
+    /**
+     * 将正式执行事件按只读视图提供给 F21 飞行日志，不跨数据库复制或伪造事件。
+     * @param {String} keyword 字面量检索任务标识、航线、结果及错误原因。
+     * @param {String?} source 日志来源；仅本地演示或全部来源可包含本地模拟。
+     * @param {Int} limit 返回条数上限，范围 1 至 1000。
+     * @return {List<FlightLogEntry>} 已提交的执行事件，按时间倒序排列。
+     */
+    fun logs(keyword: String = "", source: String? = null, limit: Int = 200): List<FlightLogEntry> {
+        require(limit in 1..1000) { "日志查询条数无效" }
+        if (source != null && source != "本地演示") return emptyList()
+        val escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        val pattern = "%$escaped%"
+        return helper.readableDatabase.rawQuery("""
+            SELECT e.rowid AS event_id, e.occurred_at, e.state, e.message,
+                   r.id AS run_id, r.route_id, r.route_name
+            FROM mission_run_events e JOIN mission_runs r ON r.id = e.run_id
+            WHERE e.message LIKE ? ESCAPE '\' OR r.id LIKE ? ESCAPE '\'
+               OR r.route_id LIKE ? ESCAPE '\' OR r.route_name LIKE ? ESCAPE '\'
+               OR ('本地模拟巡检') LIKE ? ESCAPE '\'
+            ORDER BY e.occurred_at DESC, e.rowid DESC LIMIT $limit
+        """.trimIndent(), Array(5) { pattern }).use { rows ->
+            buildList {
+                while (rows.moveToNext()) add(FlightLogEntry(
+                    id = -rows.getLong(rows.getColumnIndexOrThrow("event_id")),
+                    time = rows.getLong(rows.getColumnIndexOrThrow("occurred_at")), category = "任务",
+                    action = "本地模拟巡检", result = MissionRunState.valueOf(rows.getString(rows.getColumnIndexOrThrow("state"))).label,
+                    source = "本地演示", taskId = rows.getString(rows.getColumnIndexOrThrow("run_id")),
+                    detail = rows.getString(rows.getColumnIndexOrThrow("route_name")) + "：" +
+                        rows.getString(rows.getColumnIndexOrThrow("message")) + "\n航线编号：" +
+                        rows.getString(rows.getColumnIndexOrThrow("route_id"))))
+            }
         }
     }
 

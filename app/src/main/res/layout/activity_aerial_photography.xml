@@ -147,7 +147,7 @@
                         android:id="@+id/tvHeight"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="124m"
+                        android:text="--m"
                         android:textColor="#FFFFFF"
                         android:textSize="8sp"
                         android:textStyle="bold" />
@@ -182,7 +182,7 @@
                         android:id="@+id/tvDistance"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="842m"
+                        android:text="--m"
                         android:textColor="#FFFFFF"
                         android:textSize="8sp"
                         android:textStyle="bold" />
@@ -216,7 +216,7 @@
                         android:id="@+id/tvSpeed"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="8m/s"
+                        android:text="--m/s"
                         android:textColor="#FFFFFF"
                         android:textSize="8sp"
                         android:textStyle="bold" />
@@ -295,7 +295,7 @@
                         android:id="@+id/tvBattery"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="85%"
+                        android:text="--%"
                         android:textColor="#FFFFFF"
                         android:textSize="8sp"
                         android:textStyle="bold" />
@@ -319,6 +319,20 @@
             </androidx.cardview.widget.CardView>
         </LinearLayout>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/tv_telemetry_source"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="24dp"
+        android:layout_marginTop="8dp"
+        android:padding="6dp"
+        android:background="#B3000000"
+        android:text="未连接 · 无飞行数据 · 画面为演示"
+        android:textSize="11sp"
+        android:textColor="#FFFFFF"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/llTopBar" />
 
     <!-- 左侧按钮组 -->
     <LinearLayout
