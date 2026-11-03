@@ -4,9 +4,11 @@ import android.app.Application
 import android.content.Context
 import android.os.Handler
 import android.os.Looper
+import android.os.Build
 import android.util.Log
 import com.cySdkyc.clx.Helper
 import com.example.msdksample.drone.DroneManager
+import com.example.msdksample.drone.DjiRuntimeSupport
 
 /**
  * 统一 Application 入口。
@@ -37,8 +39,18 @@ import com.example.msdksample.drone.DroneManager
  */
 class SkyPivotApplication : Application() {
 
+    /**
+     * 在兼容的 ARM64 主机安装 DJI 加固运行壳，非兼容环境只开放本地功能。
+     * @param {Context?} base Android 应用基础上下文。
+     * @return {Unit} 不兼容环境不加载可能引发进程级崩溃的原生库。
+     */
     override fun attachBaseContext(base: Context?) {
         super.attachBaseContext(base)
+        // ARM 转译的 x86 模拟器会在加固库中触发 SIGSEGV，此类崩溃不能由 Throwable 捕获。
+        if (!DjiRuntimeSupport.supportsNativeSdk(Build.SUPPORTED_ABIS.toList())) {
+            Log.i(TAG, "当前主机仅开放本地功能，跳过 DJI 原生库加载")
+            return
+        }
         // DJI MSDK v5（≥5.10.0）加固库：必须先于任何 MSDK API 调用执行解密注入
         try {
             Helper.install(this)
@@ -47,9 +59,14 @@ class SkyPivotApplication : Application() {
         }
     }
 
+    /**
+     * 安装异常记录器，并仅在兼容主机延迟初始化 DJI SDK。
+     * @return {Unit} 无返回值；本地功能不等待 SDK 初始化。
+     */
     override fun onCreate() {
         super.onCreate()
         installCrashLogRecorder()
+        if (!DjiRuntimeSupport.supportsNativeSdk(Build.SUPPORTED_ABIS.toList())) return
 
         // 延迟到主线程空闲后初始化 DJI SDK：保证首页先渲染，
         // SDK 是否可用都不阻断进程启动。

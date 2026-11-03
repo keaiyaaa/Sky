@@ -7,9 +7,10 @@ import com.example.msdksample.kami.model.RouteSummary
 import com.example.msdksample.kami.model.RouteValidation
 import com.example.msdksample.kami.model.Waypoint
 
-class RouteRepository(context: Context) {
+class RouteRepository(context: Context) : java.io.Closeable {
+    private val helper = RouteDatabaseHelper(context.applicationContext)
     private val routeDao: RouteDao = SqliteRouteDao(
-        RouteDatabaseHelper(context.applicationContext)
+        helper
     )
 
     fun getRouteSummaries(): List<RouteSummary> {
@@ -44,4 +45,10 @@ class RouteRepository(context: Context) {
         routeDao.saveRoute(route, emptyList())
         return RouteMission(route, emptyList())
     }
+
+    /**
+     * 关闭本仓库持有的数据库连接，不影响使用独立连接的模拟执行器。
+     * @return {Unit} 无返回值。
+     */
+    override fun close() = helper.close()
 }

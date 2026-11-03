@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.os.Handler
 import android.os.Looper
+import android.os.Build
 import android.util.Log
 import com.example.msdksample.utils.PreferenceManager
 import dji.sdk.keyvalue.key.DJIFlightAssistantKey
@@ -224,11 +225,19 @@ class DroneManager private constructor() {
      * 必须在主线程调用（Application.onCreate 已满足），同一进程只应执行一次；
      * 重复调用会被忽略并回调当前状态。
      *
-     * @param context ApplicationContext
-     * @param onComplete 初始化/注册最终结果回调（可能为 null）
+     * @param {Context} context 应用上下文。
+     * @param {Function2<Boolean,String?,Unit>?} onComplete 初始化或注册结果回调。
+     * @return {Unit} 不兼容主机明确失败，不加载 DJI 原生运行库。
      */
     fun initSDK(context: Context, onComplete: ((Boolean, String?) -> Unit)? = null) {
         appContext = context.applicationContext
+        if (!DjiRuntimeSupport.supportsNativeSdk(Build.SUPPORTED_ABIS.toList())) {
+            sdkState = SdkState.REGISTER_FAILED
+            val message = "当前设备不支持 DJI 原生 SDK，可使用本地模拟"
+            notifySdkStateChanged(sdkState, message)
+            onComplete?.invoke(false, message)
+            return
+        }
         if (sdkState == SdkState.REGISTERED) {
             onComplete?.invoke(true, "SDK 已注册成功")
             return
@@ -260,7 +269,14 @@ class DroneManager private constructor() {
     }
 
     /** SDK 回调（真实 MSDK v5） */
-    private val sdkCallback = object : SDKManagerCallback {
+    /** 仅真正初始化 SDK 时构造，离线首页读取状态不会提前加载加固接口。 */
+    private val sdkCallback: SDKManagerCallback by lazy { createSdkCallback() }
+
+    /**
+     * 构造真实 SDK 注册和连接回调，保持 ARM64 真机的既有注册时序。
+     * @return {SDKManagerCallback} 仅在兼容运行壳已安装后使用的回调。
+     */
+    private fun createSdkCallback(): SDKManagerCallback = object : SDKManagerCallback {
         override fun onInitProcess(event: DJISDKInitEvent?, totalProcess: Int) {
             Log.i(TAG, "onInitProcess: event=$event progress=$totalProcess")
             if (event == DJISDKInitEvent.INITIALIZE_COMPLETE) {

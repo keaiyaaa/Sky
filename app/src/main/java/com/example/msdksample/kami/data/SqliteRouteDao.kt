@@ -8,6 +8,8 @@ import com.example.msdksample.kami.model.RoutePlan
 import com.example.msdksample.kami.model.RoutePriority
 import com.example.msdksample.kami.model.RouteSummary
 import com.example.msdksample.kami.model.Waypoint
+import com.example.msdksample.kami.model.RouteSafetyValidator
+import com.example.msdksample.kami.mission.MissionRunSchema
 
 class SqliteRouteDao(
     private val dbHelper: RouteDatabaseHelper
@@ -40,8 +42,15 @@ class SqliteRouteDao(
         }
     }
 
+    /**
+     * 在同一读事务中获取航线元数据与航点，避免并发保存造成半旧半新的快照。
+     * @param {String} routeId 航线稳定标识。
+     * @return {RouteMission?} 完整快照；不存在时返回 null。
+     */
     override fun getRoute(routeId: String): RouteMission? {
         val db = dbHelper.readableDatabase
+        db.beginTransaction()
+        try {
         val route = db.query(
             RouteDatabaseHelper.TABLE_ROUTES,
             null,
@@ -52,7 +61,7 @@ class SqliteRouteDao(
             null
         ).use { cursor ->
             if (cursor.moveToFirst()) cursor.readRoute() else null
-        } ?: return null
+        } ?: run { db.setTransactionSuccessful(); return null }
 
         val waypoints = db.query(
             RouteDatabaseHelper.TABLE_WAYPOINTS,
@@ -70,30 +79,42 @@ class SqliteRouteDao(
             }
         }
 
-        return RouteMission(route, waypoints)
+            db.setTransactionSuccessful()
+            return RouteMission(route, waypoints)
+        } finally {
+            db.endTransaction()
+        }
     }
 
+    /**
+     * 原子保存已通过示例安全规则的航线，任一航点写入失败时整体回滚。
+     * @param {RoutePlan} route 航线元数据；时间戳在持久化副本中更新，不修改调用方对象。
+     * @param {List<Waypoint>} waypoints 按执行顺序排列的航点。
+     * @return {Unit} 超额、活动任务锁定、安全违规或写入失败时抛出异常。
+     */
     override fun saveRoute(route: RoutePlan, waypoints: List<Waypoint>) {
+        require(route.id.isNotBlank()) { "航线标识不能为空" }
+        require(route.name.isNotBlank() && route.name.length <= 100) { "航线名称须为 1 至 100 个字符" }
+        require(route.taskName.length <= 200 && route.taskTime.length <= 100) { "任务名称或时间过长" }
+        require(waypoints.all { it.routeId.isBlank() || it.routeId == route.id }) { "不能保存其他航线的航点" }
+        RouteSafetyValidator().requireSafe(waypoints)
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
+            MissionRunSchema.requireEditable(db, route.id)
             val exists = routeExists(db, route.id)
             if (!exists && getRouteCount(db) >= MAX_ROUTES) {
                 throw RouteLimitExceededException()
             }
 
             val now = System.currentTimeMillis()
-            if (route.createdAt <= 0L) {
-                route.createdAt = now
+            val savedRoute = route.copy(createdAt = route.createdAt.takeIf { it > 0 } ?: now, updatedAt = now)
+            // UPDATE 不触发 REPLACE 的级联删除语义；所有插入均使用抛错版本。
+            if (exists) {
+                check(db.update(RouteDatabaseHelper.TABLE_ROUTES, savedRoute.toContentValues(), "id = ?", arrayOf(route.id)) == 1)
+            } else {
+                db.insertOrThrow(RouteDatabaseHelper.TABLE_ROUTES, null, savedRoute.toContentValues())
             }
-            route.updatedAt = now
-
-            db.insertWithOnConflict(
-                RouteDatabaseHelper.TABLE_ROUTES,
-                null,
-                route.toContentValues(),
-                SQLiteDatabase.CONFLICT_REPLACE
-            )
 
             db.delete(
                 RouteDatabaseHelper.TABLE_WAYPOINTS,
@@ -102,13 +123,11 @@ class SqliteRouteDao(
             )
 
             waypoints.forEachIndexed { index, waypoint ->
-                waypoint.routeId = route.id
-                waypoint.sequence = index + 1
-                db.insertWithOnConflict(
+                val savedWaypoint = waypoint.copy(routeId = route.id, sequence = index + 1)
+                db.insertOrThrow(
                     RouteDatabaseHelper.TABLE_WAYPOINTS,
                     null,
-                    waypoint.toContentValues(),
-                    SQLiteDatabase.CONFLICT_REPLACE
+                    savedWaypoint.toContentValues()
                 )
             }
 
@@ -118,10 +137,16 @@ class SqliteRouteDao(
         }
     }
 
+    /**
+     * 删除航线和所属航点，执行中的航线拒绝删除，历史任务快照保留。
+     * @param {String} routeId 待删除的航线稳定标识。
+     * @return {Unit} 锁定或数据库错误时抛出异常。
+     */
     override fun deleteRoute(routeId: String) {
         val db = dbHelper.writableDatabase
         db.beginTransaction()
         try {
+            MissionRunSchema.requireEditable(db, routeId)
             db.delete(
                 RouteDatabaseHelper.TABLE_WAYPOINTS,
                 "route_id = ?",

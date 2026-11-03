@@ -51,7 +51,10 @@ class SimulatedFlightEngine(
         monitor.setObstacles(obstacles)
     }
 
-    /** 启动（幂等防重入）。位置重置到首个航点。 */
+    /**
+     * 启动模拟并把首个航点设为起点，下一航点才是移动目标。
+     * @return {Unit} 航点不足或已在运行时不重复启动。
+     */
     fun start() {
         if (running) {
             statusListener("模拟避障演示已在运行")
@@ -62,7 +65,7 @@ class SimulatedFlightEngine(
             return
         }
         finished = false
-        currentIndex = 0
+        currentIndex = 1
         bypassRemaining = 0.0
         positionLat = waypoints[0].latitude
         positionLon = waypoints[0].longitude
@@ -131,7 +134,21 @@ class SimulatedFlightEngine(
         }
     }
 
+    /**
+     * 向当前目标推进，剩余距离不足一步时精确到点，避免短航段或重复点来回振荡。
+     * @param {Double} stepMeters 当前节拍可移动的距离，单位米。
+     * @return {Unit} 更新位置和遥测；到点时同步目标高度。
+     */
     private fun moveTowardsTarget(stepMeters: Double) {
+        val target = waypoints[currentIndex]
+        val distance = DroneGeo.distanceMeters(positionLat, positionLon, target.latitude, target.longitude)
+        if (distance <= stepMeters) {
+            positionLat = target.latitude
+            positionLon = target.longitude
+            altitude = target.altitude
+            telemetryListener(AircraftTelemetry(positionLat, positionLon, altitude, headingDeg))
+            return
+        }
         headingDeg = bearingToTarget()
         moveByHeading(stepMeters)
     }

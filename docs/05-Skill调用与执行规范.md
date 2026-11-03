@@ -116,7 +116,7 @@ flowchart TB
 
 ## 8. Git 安全规范
 
-1. 只在 `feature/phase-*` / `feature/release-prep` 分支改业务代码；master 仅合并（需用户指令）；
+1. 默认只在 `feature/phase-*` / `feature/release-prep` 分支改业务代码，master 仅合并。本次用户已明确要求不新建分支、完成后合并同步，因此 F07/F08/F09/F11 按该明确授权在 `master` 提交和推送；不改写历史、不覆盖并行更新。
 2. 禁止：`git reset --hard`、`git clean -fd`、`git push --force`、改写历史、自动 push、自动创建 PR——除非用户明确指令；
 3. 每任务一提交，信息格式 `phase-NN: task-NN <描述>`；合并前必有整分支审查；
 4. `.superpowers/` 工作区目录加入 `.gitignore`（首次使用时）；

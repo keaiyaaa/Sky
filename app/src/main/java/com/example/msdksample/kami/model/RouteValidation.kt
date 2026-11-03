@@ -1,6 +1,7 @@
 package com.example.msdksample.kami.model
 
 object RouteValidation {
+    const val MAX_WAYPOINTS = 99
     private const val MIN_LATITUDE = -90.0
     private const val MAX_LATITUDE = 90.0
     private const val MIN_LONGITUDE = -180.0
@@ -26,6 +27,7 @@ object RouteValidation {
      * @returns {Unit} 校验通过无返回；失败时抛出 IllegalArgumentException。
      */
     fun requireValidWaypoint(waypoint: Waypoint) {
+        require(waypoint.id.isNotBlank()) { "航点标识不能为空" }
         require(waypoint.latitude in MIN_LATITUDE..MAX_LATITUDE) {
             "航点纬度超出范围: ${waypoint.latitude}"
         }
@@ -43,6 +45,9 @@ object RouteValidation {
      * @returns {Unit} 校验通过无返回；失败时抛出 IllegalArgumentException。
      */
     fun requireValidWaypoints(waypoints: List<Waypoint>) {
+        // 页面之外的导入和业务调用同样受数量及主键约束，避免数据库覆盖后丢点。
+        require(waypoints.size <= MAX_WAYPOINTS) { "最多只能保存 $MAX_WAYPOINTS 个航点" }
+        require(waypoints.map { it.id }.distinct().size == waypoints.size) { "航点标识不能重复" }
         waypoints.forEach { waypoint ->
             requireValidWaypoint(waypoint)
         }

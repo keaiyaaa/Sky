@@ -56,24 +56,50 @@ class DjiV5MapLibreRouteMapController(
     private var aircraftMarker: Marker? = null
     private var draggingMarker: Marker? = null
     private var draggingWaypointId: String? = null
+    /** 拖拽起点用于手势取消时恢复，不把每一帧写入数据库。 */
+    private var dragStartPosition: LatLng? = null
+    private var fallbackStyle = false
+    private var destroyed = false
 
     override fun setCallbacks(callbacks: RouteMapCallbacks) {
         this.callbacks = callbacks
     }
 
+    /**
+     * 初始化地图并注册加载失败降级，列表编辑不依赖底图网络请求成功。
+     * @param {Bundle?} savedInstanceState 系统保存的地图状态。
+     * @return {Unit} 初始化异常通过状态回调反馈。
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         try {
             mapView.onCreate(savedInstanceState)
+            mapView.addOnDidFailLoadingMapListener {
+                if (!destroyed && !fallbackStyle) {
+                    fallbackStyle = true
+                    // 空白底图只保留坐标交互和叠加层，不把示例底图当作正式空域数据。
+                    mapboxMap?.setStyle(Style.Builder().fromJson(OFFLINE_STYLE)) {
+                        styleLoaded = true
+                        callbacks?.onMapReady()
+                        callbacks?.onMapStatusChanged("底图不可用；可用坐标添加、航点列表编辑和本地模拟")
+                    }
+                }
+            }
             mapView.getMapAsync { readyMap ->
                 setupReadyMap(readyMap)
             }
         } catch (error: Exception) {
             Log.e(TAG, "MapLibre init failed: ${error.message}", error)
-            Toast.makeText(context, "DJI 地图初始化异常: ${error.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "地图加载失败，可继续使用坐标和列表编辑", Toast.LENGTH_LONG).show()
+            callbacks?.onMapStatusChanged("底图初始化失败；可继续使用坐标和航点列表")
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
+    /**
+     * 连接地图事件和底图；所有航点坐标使用 WGS84。
+     * @param {MapboxMap} readyMap 异步就绪的地图实例。
+     * @return {Unit} 无返回值。
+     */
     private fun setupReadyMap(readyMap: MapboxMap) {
         mapboxMap = readyMap
         readyMap.moveCamera(
@@ -111,8 +137,36 @@ class DjiV5MapLibreRouteMapController(
                 enableLocationComponent(readyMap, style)
             }
             callbacks?.onMapReady()
+            callbacks?.onMapStatusChanged("底图已加载 · WGS84 坐标 · 区域仅为示例规则")
         }
     }
+
+    /**
+     * 用户主动重试底图，不重置已保存航点或执行记录。
+     * @return {Unit} 地图尚未初始化时保留离线编辑入口。
+     */
+    fun retryStyle() {
+        val map = mapboxMap ?: return
+        fallbackStyle = false
+        callbacks?.onMapStatusChanged("底图加载中；可继续使用坐标编辑")
+        map.setStyle(buildMapStyle()) {
+            styleLoaded = true
+            callbacks?.onMapReady()
+            callbacks?.onMapStatusChanged("底图已加载 · WGS84 坐标 · 区域仅为示例规则")
+        }
+    }
+
+    /**
+     * 通知地图进入可见状态。
+     * @return {Unit} 无返回值。
+     */
+    fun onStart() { mapView.onStart() }
+
+    /**
+     * 通知地图离开可见状态。
+     * @return {Unit} 无返回值。
+     */
+    fun onStop() { mapView.onStop() }
 
     override fun onResume() {
         mapView.onResume()
@@ -122,7 +176,13 @@ class DjiV5MapLibreRouteMapController(
         mapView.onPause()
     }
 
+    /**
+     * 释放地图和页面回调，迟到的网络事件不再操作页面。
+     * @return {Unit} 无返回值。
+     */
     override fun onDestroy() {
+        destroyed = true
+        callbacks = null
         mapView.onDestroy()
     }
 
@@ -298,6 +358,12 @@ class DjiV5MapLibreRouteMapController(
         }
     }
 
+    /**
+     * 拖拽时只更新标记，松手后提交一次；手势取消时恢复原坐标。
+     * @param {MotionEvent} event 本次触摸事件。
+     * @param {MapboxMap} map 当前地图。
+     * @return {Boolean} 是否消费本次航点拖拽手势。
+     */
     private fun handleWaypointDragTouch(event: MotionEvent, map: MapboxMap): Boolean {
         return when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
@@ -307,6 +373,7 @@ class DjiV5MapLibreRouteMapController(
                 } else {
                     draggingMarker = marker
                     draggingWaypointId = markerWaypointIds[marker.id]
+                    dragStartPosition = LatLng(marker.position.latitude, marker.position.longitude)
                     true
                 }
             }
@@ -315,28 +382,45 @@ class DjiV5MapLibreRouteMapController(
                 updateDraggingWaypoint(event, map)
             }
 
-            MotionEvent.ACTION_UP,
-            MotionEvent.ACTION_CANCEL -> {
+            MotionEvent.ACTION_UP -> {
                 val consumed = updateDraggingWaypoint(event, map)
+                val id = draggingWaypointId
+                val position = draggingMarker?.position
+                if (id != null && position != null) callbacks?.onWaypointDragged(id, position.latitude, position.longitude)
                 draggingMarker = null
                 draggingWaypointId = null
+                dragStartPosition = null
                 if (consumed) {
                     mapView.performClick()
                 }
                 consumed
             }
 
+            MotionEvent.ACTION_CANCEL -> {
+                val marker = draggingMarker
+                dragStartPosition?.let { if (marker != null) { marker.position = it; map.updateMarker(marker) } }
+                draggingMarker = null
+                draggingWaypointId = null
+                dragStartPosition = null
+                marker != null
+            }
+
             else -> draggingMarker != null
         }
     }
 
+    /**
+     * 预览拖拽位置，不触发业务保存回调。
+     * @param {MotionEvent} event 手势坐标。
+     * @param {MapboxMap} map 用于屏幕坐标转换的地图。
+     * @return {Boolean} 当前是否存在可拖拽的标记。
+     */
     private fun updateDraggingWaypoint(event: MotionEvent, map: MapboxMap): Boolean {
         val marker = draggingMarker ?: return false
-        val waypointId = draggingWaypointId ?: return false
+        if (draggingWaypointId == null) return false
         val position = map.projection.fromScreenLocation(PointF(event.x, event.y))
         marker.position = position
         map.updateMarker(marker)
-        callbacks?.onWaypointDragged(waypointId, position.latitude, position.longitude)
         return true
     }
 
@@ -413,13 +497,11 @@ class DjiV5MapLibreRouteMapController(
         }.getOrDefault("").trim()
     }
 
+    /**
+     * 选择 WGS84 底图，避免把 GCJ02 瓦片直接叠加到 WGS84 安全区域上。
+     * @return {Style.Builder} 配置的天地图或 MapLibre 样式。
+     */
     private fun buildMapStyle(): Style.Builder {
-        // 优先级: 高德地图 > 天地图 > 默认 MapLibre 演示瓦片
-        val amapKey = readAmapKey()
-        if (amapKey.isNotBlank()) {
-            Log.i(TAG, "Using AMap raster tiles (key=${amapKey.take(8)}...)")
-            return Style.Builder().fromJson(buildAmapStyleJson())
-        }
         val tianDiTuToken = readTianDiTuToken()
         if (tianDiTuToken.isNotBlank()) {
             Log.i(TAG, "Using TianDiTu tiles")
@@ -528,6 +610,7 @@ class DjiV5MapLibreRouteMapController(
     }
 
     companion object {
+        private const val OFFLINE_STYLE = """{"version":8,"sources":{},"layers":[{"id":"background","type":"background","paint":{"background-color":"#E9EEF3"}}]}"""
         private const val TAG = "DjiV5MapLibre"
         private const val DEFAULT_LATITUDE = 31.2047    // 上海张江
         private const val DEFAULT_LONGITUDE = 121.5809

@@ -1,5 +1,7 @@
 # 04 - API 接口与调用说明（Sky / 天枢巡检）
 
+> 当前内部接口补充：F07/F08/F09/F11 使用既有 `RouteRepository`、新增 `RouteSafetyValidator` 和 `LocalMissionRuntime` / `MissionRunRepository`。这些接口直接访问本地正式 SQLite 存储，不新增 HTTP 接口。参数、返回结果、状态机和历史查询示例见 [航线与模拟巡检契约](contracts/fzp-route-mission-contracts.md)。原文 DJI 网关继续作为待真机联调接口，页面不会自动切换到该执行链路。
+
 > 依据代码基线 `30772d3` 的真实调用关系整理。本仓库**没有任何业务后端**，本文按五类如实分类：
 > ① Android 内部模块接口 ② 无人机控制接口（DJI MSDK 调用面）③ 数据库访问接口 ④ 已使用的外部 HTTP 服务 ⑤ 规划接口（尚未实现，显式标注）。
 > 状态标注：`[已验证]`（本次构建/测试或交叉引用核实）/ `[代码可见但未验证]` / `[规划接口，尚未实现]`
