@@ -16,6 +16,11 @@ import com.example.msdksample.kami.RoutePlanningActivity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.example.msdksample.drone.command.BasicFlightAction
+import com.example.msdksample.drone.command.SimulatedFlightCommandExecutor
+import com.example.msdksample.aerial.camera.CameraAction
+import com.example.msdksample.aerial.camera.CameraOperationController
+import com.example.msdksample.aerial.camera.DjiCameraGateway
 
 class Aerial_photography : AppCompatActivity() {
     private lateinit var binding: ActivityAerialPhotographyBinding
@@ -28,6 +33,8 @@ class Aerial_photography : AppCompatActivity() {
     private var llmTimeoutRunnable: Runnable? = null
 
     private var isVideoRecording = false
+    private val simulatedFlight = SimulatedFlightCommandExecutor()
+    private val cameraController = CameraOperationController(DjiCameraGateway())
 
     /** 演示视频文件名：需把 test.mp4 放到 App 专属外部目录（见 initDemoVideoIfPresent） */
     private val demoVideoFileName = "test.mp4"
@@ -150,9 +157,12 @@ class Aerial_photography : AppCompatActivity() {
         val videoFile = File(getExternalFilesDir(null), demoVideoFileName)
         if (!videoFile.exists()) {
             Log.w(TAG, "演示视频不存在: ${videoFile.absolutePath}，保持静态占位图")
+            binding.tvRetryDemoVideo.visibility = View.VISIBLE
+            binding.tvRetryDemoVideo.setOnClickListener { initDemoVideoIfPresent() }
             return
         }
         val vv = binding.vvDemoVideo
+        binding.tvRetryDemoVideo.visibility = View.GONE
         binding.ivVideoFeed.visibility = View.GONE
         vv.visibility = View.VISIBLE
         binding.flVideoPreview.setBackgroundColor(Color.BLACK)
@@ -167,6 +177,7 @@ class Aerial_photography : AppCompatActivity() {
         vv.setOnErrorListener { _, _, _ ->
             Log.w(TAG, "演示视频播放失败，降级为静态占位图")
             showStaticFallback()
+            binding.tvRetryDemoVideo.visibility = View.VISIBLE
             true
         }
         try {
@@ -174,6 +185,7 @@ class Aerial_photography : AppCompatActivity() {
         } catch (t: Throwable) {
             Log.w(TAG, "加载演示视频异常: ${t.message}")
             showStaticFallback()
+            binding.tvRetryDemoVideo.visibility = View.VISIBLE
         }
     }
 
@@ -201,6 +213,7 @@ class Aerial_photography : AppCompatActivity() {
         binding.flVideoPreview.setBackgroundColor(Color.TRANSPARENT)
         binding.vvDemoVideo.visibility = View.GONE
         binding.ivVideoFeed.visibility = View.VISIBLE
+        binding.tvRetryDemoVideo.visibility = View.VISIBLE
     }
 
     private fun pauseDemoVideo() {
@@ -683,66 +696,35 @@ class Aerial_photography : AppCompatActivity() {
 
     // ==================== MSDK 实际调用 ====================
 
-    private val simCb = object : AerialDroneManager.SimulatorCallback {
-        override fun onSuccess() {
-            showToast("操作成功")
-        }
-        override fun onFailure(message: String) {
-            showToast(message)
-        }
-    }
-
     private fun captureDronePhoto() {
-        AerialDroneManager.setCameraModeToPhoto(object : AerialDroneManager.SimulatorCallback {
-            override fun onSuccess() {
-                AerialDroneManager.startShootPhoto(simCb)
-            }
-            override fun onFailure(message: String) {
-                AerialDroneManager.startShootPhoto(simCb)
-            }
-        })
+        executeCameraAction(CameraAction.PHOTO)
     }
 
     private fun startVideoRecording() {
-        AerialDroneManager.setCameraModeToVideo(object : AerialDroneManager.SimulatorCallback {
-            override fun onSuccess() {
-                AerialDroneManager.startRecordVideo(object : AerialDroneManager.SimulatorCallback {
-                    override fun onSuccess() {
-                        isVideoRecording = true
-                        binding.cvRecord.setCardBackgroundColor(getColor(R.color.mode_active))
-                        showToast("开始录像")
-                    }
-                    override fun onFailure(message: String) {
-                        showToast(message)
-                    }
-                })
-            }
-            override fun onFailure(message: String) {
-                AerialDroneManager.startRecordVideo(object : AerialDroneManager.SimulatorCallback {
-                    override fun onSuccess() {
-                        isVideoRecording = true
-                        binding.cvRecord.setCardBackgroundColor(getColor(R.color.mode_active))
-                        showToast("开始录像")
-                    }
-                    override fun onFailure(message: String) {
-                        showToast(message)
-                    }
-                })
-            }
-        })
+        executeCameraAction(CameraAction.START_RECORD)
     }
 
     private fun stopVideoRecording() {
-        AerialDroneManager.stopRecordVideo(object : AerialDroneManager.SimulatorCallback {
-            override fun onSuccess() {
-                isVideoRecording = false
-                binding.cvRecord.setCardBackgroundColor(getColor(R.color.mode_inactive))
-                showToast("停止录像")
-            }
-            override fun onFailure(message: String) {
+        executeCameraAction(CameraAction.STOP_RECORD)
+    }
+
+    private fun executeCameraAction(action: CameraAction) {
+        cameraController.execute(action) { result ->
+            runOnUiThread {
+                isVideoRecording = cameraController.state == com.example.msdksample.aerial.camera.CameraState.RECORDING
+                binding.cvRecord.setCardBackgroundColor(
+                    getColor(if (isVideoRecording) R.color.mode_active else R.color.mode_inactive)
+                )
+                val message = if (result.status == com.example.msdksample.aerial.camera.CameraOperationStatus.SUCCEEDED) {
+                    when (action) {
+                        CameraAction.PHOTO -> "拍照成功"
+                        CameraAction.START_RECORD -> "开始录像"
+                        CameraAction.STOP_RECORD -> "停止录像"
+                    }
+                } else result.message
                 showToast(message)
             }
-        })
+        }
     }
 
     private fun showCommandConfirmDialog(command: String) {
@@ -794,11 +776,8 @@ class Aerial_photography : AppCompatActivity() {
                     is LLMResult.Unknown -> {
                         AlertDialog.Builder(this)
                             .setTitle("无法识别飞行意图")
-                            .setMessage("${result.reason}\n\n原文: \"$command\"\n\n是否仍要执行原指令？")
-                            .setPositiveButton("仍执行") { _, _ ->
-                                executeRawCommand(command)
-                            }
-                            .setNegativeButton("取消", null)
+                            .setMessage("${result.reason}\n\n请修改指令后重试。")
+                            .setPositiveButton("知道了", null)
                             .setCancelable(false)
                             .show()
                     }
@@ -825,19 +804,7 @@ class Aerial_photography : AppCompatActivity() {
         }
     }
 
-    private fun matchLocalCommand(command: String): String? {
-        val text = command.trim().lowercase()
-        return when {
-            text.contains("返航") || text.contains("回来") || text.contains("回家") -> "返航"
-            text.contains("悬停") || text.contains("停") || text.contains("不动") -> "悬停"
-            text.contains("拍照") || text.contains("拍一张") || text.contains("照相") -> "拍照"
-            text.contains("起飞") || text.contains("升空") || text.contains("飞起来") -> "起飞"
-            text.contains("降落") || text.contains("下去") || text.contains("着陆") -> "降落"
-            text.contains("停止录像") || text.contains("不录") || text.contains("结束录像") || text.contains("停止录制") -> "停止录像"
-            text.contains("录像") || text.contains("录制") || text.contains("开始录") -> "录像"
-            else -> null
-        }
-    }
+    private fun matchLocalCommand(command: String): String? = LocalCommandMatcher.match(command)
 
     private fun showLocalCommandConfirmDialog(command: String, matched: String) {
         binding.tvConfirmTitle.text = matched
@@ -853,11 +820,11 @@ class Aerial_photography : AppCompatActivity() {
     private fun executeLocalCommand(matched: String) {
         hideQuickCommandDialog()
         when (matched) {
-            "返航" -> showToast("返航功能需要连接真实无人机")
-            "悬停" -> showToast("悬停功能需要连接真实无人机")
+            "返航" -> showToast(simulatedFlight.execute(BasicFlightAction.RETURN_HOME))
+            "悬停" -> showToast(simulatedFlight.execute(BasicFlightAction.HOVER))
             "拍照" -> captureDronePhoto()
-            "起飞" -> showToast("起飞功能需要连接真实无人机")
-            "降落" -> showToast("降落功能需要连接真实无人机")
+            "起飞" -> showToast(simulatedFlight.execute(BasicFlightAction.TAKEOFF))
+            "降落" -> showToast(simulatedFlight.execute(BasicFlightAction.LAND))
             "录像" -> startVideoRecording()
             "停止录像" -> stopVideoRecording()
             else -> showToast("执行指令: $matched")
@@ -865,6 +832,11 @@ class Aerial_photography : AppCompatActivity() {
     }
 
     private fun showFlightIntentConfirmDialog(intent: FlightIntent, summary: String) {
+        val validation = FlightIntentValidator.validate(intent)
+        if (!validation.valid) {
+            showToast("飞控参数无效：${validation.message}")
+            return
+        }
         val title = when (intent.flightType) {
             "takeoff" -> "起飞"
             "land" -> "降落"
@@ -879,10 +851,12 @@ class Aerial_photography : AppCompatActivity() {
             else -> "飞行指令"
         }
         binding.tvConfirmTitle.text = title
-        binding.tvConfirmMessage.text = "$summary\n\n是否执行以下命令？"
+        binding.tvConfirmMessage.text = if (validation.executableNow) "$summary\n\n是否执行以下命令？"
+            else "$summary\n\n仅生成参数预览，当前不支持执行。"
+        binding.cvConfirmExecute.visibility = if (validation.executableNow) View.VISIBLE else View.GONE
         binding.cvConfirmExecute.setOnClickListener {
             hideCommandConfirmDialog()
-            executeFlightIntent(intent)
+            if (validation.executableNow) executeFlightIntent(intent)
         }
         binding.cvConfirmCancel.setOnClickListener { hideCommandConfirmDialog() }
         binding.clCommandConfirmDialog.visibility = View.VISIBLE
@@ -890,6 +864,7 @@ class Aerial_photography : AppCompatActivity() {
 
     private fun hideCommandConfirmDialog() {
         binding.clCommandConfirmDialog.visibility = View.GONE
+        binding.cvConfirmExecute.visibility = View.VISIBLE
         binding.cvConfirmExecute.setOnClickListener(null)
         binding.cvConfirmCancel.setOnClickListener(null)
     }
@@ -901,16 +876,10 @@ class Aerial_photography : AppCompatActivity() {
         Log.d("FlightIntent", "执行飞行: type=${intent.flightType}, params=${intent.parameters}")
 
         when (intent.flightType) {
-            "takeoff" -> {
-                val alt = intent.parameters.altitude ?: 10.0
-                showToast("起飞至 ${alt} 米 (需连接真实无人机)")
-            }
-            "land" -> showToast("降落 (需连接真实无人机)")
-            "return_home" -> showToast("返航 (需连接真实无人机)")
-            "hover" -> {
-                val dur = intent.parameters.duration ?: 5
-                showToast("悬停 ${dur} 秒 (需连接真实无人机)")
-            }
+            "takeoff" -> showToast(simulatedFlight.execute(BasicFlightAction.TAKEOFF))
+            "land" -> showToast(simulatedFlight.execute(BasicFlightAction.LAND))
+            "return_home" -> showToast(simulatedFlight.execute(BasicFlightAction.RETURN_HOME))
+            "hover" -> showToast("${simulatedFlight.execute(BasicFlightAction.HOVER)}（${intent.parameters.duration ?: 5} 秒仅为演示）")
             "photo" -> {
                 val count = intent.parameters.count ?: 1
                 showToast("拍摄 ${count} 张照片")
@@ -924,24 +893,7 @@ class Aerial_photography : AppCompatActivity() {
                     startVideoRecording()
                 }
             }
-            "gimbal_control" -> {
-                val pitch = intent.parameters.pitch
-                val yaw = intent.parameters.yaw
-                showToast("云台控制: pitch=${pitch}, yaw=${yaw} (需连接真实无人机)")
-            }
-            "fly_to" -> {
-                val alt = intent.parameters.altitude
-                val dist = intent.parameters.distance
-                val dir = intent.parameters.direction
-                showToast("飞行动作: 方向=$dir, 距离=$dist, 高度=$alt (需连接真实无人机)")
-            }
-            "orbit" -> {
-                showToast("环绕飞行: 半径=${intent.parameters.radius}m (需连接真实无人机)")
-            }
-            "waypoint" -> {
-                showToast("航点飞行: 模式=${intent.parameters.pattern} (需连接真实无人机)")
-            }
-            else -> showToast("未知飞行类型: ${intent.flightType}")
+            else -> showToast("当前演示模式不支持此指令：${intent.flightType}")
         }
     }
 

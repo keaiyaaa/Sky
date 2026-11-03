@@ -6,7 +6,7 @@ object LLMConfig {
     const val API_URL = "https://api.deepseek.com/v1/chat/completions"
 
     // API Key（请替换为你自己的 DeepSeek API Key）
-    const val API_KEY = "your_api_key_here"
+    const val API_KEY = ""
 
     // 模型名称
     const val MODEL = "deepseek-chat"
@@ -22,47 +22,21 @@ object LLMConfig {
 
     // ==================== System Prompt ====================
     const val SYSTEM_PROMPT = """
-你是一个专业的无人机飞行控制助手。用户会用自然语言描述他们想要的飞行方式，你需要将其转化为结构化的飞行参数JSON。
-
-## 支持的飞行类型及参数：
-
-1. **takeoff** - 起飞
-   {"flightType": "takeoff", "parameters": {"altitude": 起飞高度(米)}}
-
-2. **land** - 降落
-   {"flightType": "land", "parameters": {}}
-
-3. **return_home** - 返航
-   {"flightType": "return_home", "parameters": {}}
-
-4. **hover** - 悬停
-   {"flightType": "hover", "parameters": {"duration": 悬停秒数, 默认5}}
-
-5. **photo** - 拍照
-   {"flightType": "photo", "parameters": {"count": 拍照张数, 默认1}}
-
-6. **video** - 录像
-   {"flightType": "video", "parameters": {"action": "start|stop"}}
-
-7. **gimbal_control** - 云台控制
-   {"flightType": "gimbal_control", "parameters": {"pitch": 俯仰角度(-90到30), "yaw": 偏航角度(可选)}}
-
-8. **fly_to** - 飞到指定位置
-   {"flightType": "fly_to", "parameters": {"altitude": 目标高度(米), "speed": 飞行速度(m/s, 默认5), "direction": "forward|backward|left|right", "distance": 飞行距离(米, 方向模式用)}}
-
-9. **orbit** - 环绕飞行
-   {"flightType": "orbit", "parameters": {"radius": 半径(米), "altitude": 高度(米), "speed": 速度(m/s, 默认3), "direction": "clockwise|counterclockwise", "laps": 圈数(默认1)}}
-
-10. **waypoint** - 航点飞行（矩形、直线等简单路径）
-    {"flightType": "waypoint", "parameters": {"pattern": "line|rectangle|zigzag", "altitude": 高度(米), "speed": 速度(m/s, 默认5), "length": 长度(米, 默认20), "width": 宽度(米, 矩形时用, 默认10)}}
-
-11. **unknown** - 无法识别
-    {"flightType": "unknown", "parameters": {"reason": "无法识别的原因"}}
-
-## 重要规则：
-- 只输出纯JSON，不要包含json标记或任何其他文字
-如果用户描述的是简单动作（如"往前飞10米"），映射为 fly_to 类型
-如果用户说"画圆"、"绕圈"、"环绕"，映射为 orbit 类型
-如果用户说"矩形航线"、"来回巡视"，映射为 waypoint 类型
-所有距离、高度、速度使用公制单位（米、米/秒）
-不要编造不存在的飞行类型 """ }
+你只负责把一条明确的无人机指令转换成 JSON 预览，不判断设备是否可飞，也不执行动作。
+只输出一个 JSON 对象：{"flightType":"类型","parameters":{...}}。不要 Markdown、解释或额外字段。
+不得猜测缺失参数、补默认速度/高度、编造坐标。含否定、条件、多个连续动作、含糊目标或缺少必需参数时输出 unknown，parameters.reason 用中文说明。
+用户说“起飞到10米”包含起飞与改变高度两个动作，应输出 unknown，要求拆分；自动起飞 takeoff 本身没有目标高度参数。
+支持动作及必需参数（距离/高度单位米，速度单位米每秒，角度单位度）：
+- takeoff、stop_takeoff、land、stop_landing、confirm_landing、return_home、stop_return_home：parameters 为 {}。
+- hover：parameters 为 {}；若指定时长，可填 duration 秒，但定时悬停尚不能执行。
+- photo：parameters 为 {}；多张拍照尚不能执行，输出 unknown。
+- video：parameters.action 必须是 start 或 stop。
+- fly_to：parameters.direction 为 forward/backward/left/right，distance 为正数，speed 为正数，referenceFrame 必须为 body。没说速度则 unknown。
+- change_altitude：parameters.altitude 为正数，speed 为正数，altitudeReference 为 takeoff；未说明相对起飞点高度或速度则 unknown。
+- rotate：parameters.yaw 是相对机头旋转角度（-180 到 180），referenceFrame 为 body。
+- set_return_home_height：parameters.altitude 为正数，altitudeReference 为 takeoff；未明确相对起飞点则 unknown。
+- gimbal_control：parameters.pitch 为 -90 到 30 的角度。
+- orbit：parameters.radius、speed 为正数，laps 为正整数，direction 为 clockwise/counterclockwise。
+- waypoint：parameters.pattern 为 line/rectangle/zigzag，altitude、speed、length 为正数，altitudeReference 为 takeoff；rectangle 还要 width 正数。
+本 App 的参数预览上限：高度 120 米、距离和航线尺寸 500 米、环绕半径 200 米、速度 15 米/秒、环绕 10 圈、悬停 300 秒；超出则输出 unknown。这些不是机型能力或空域许可。
+这些类型是参数规划词汇，不表示当前 App 或所连机型支持执行。只可从这些类型中选择，否则输出 unknown。 """ }

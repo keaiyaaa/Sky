@@ -14,6 +14,8 @@ import android.widget.VideoView
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.navigation.NavigationView
 import com.example.msdksample.aerial.Aerial_photography
+import com.example.msdksample.auth.DemoLoginActivity
+import com.example.msdksample.auth.DemoSession
 import com.example.msdksample.asuka.MainActivity
 import com.example.msdksample.base.BaseActivity
 import com.example.msdksample.databinding.ActivityHomeBinding
@@ -65,6 +67,11 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
     override fun getViewBinding() = ActivityHomeBinding.inflate(layoutInflater)
 
     override fun initViews() {
+        if (DemoSession.signedInUser == null) {
+            startActivity(Intent(this, DemoLoginActivity::class.java))
+            finish()
+            return
+        }
         binding.navView.setNavigationItemSelectedListener(this)
 
         // ── 右侧快捷入口 ──────────────────────────────────────────
@@ -185,7 +192,9 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
             .setTitle("退出登录")
             .setMessage("确定要退出登录吗？")
             .setPositiveButton("确定") { _, _ ->
-                finishAffinity()
+                DemoSession.signOut()
+                startActivity(Intent(this, DemoLoginActivity::class.java))
+                finish()
             }
             .setNegativeButton("取消", null)
             .show()

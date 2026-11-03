@@ -3,7 +3,6 @@ package com.example.msdksample.aerial
 import android.util.Log
 import com.google.gson.Gson
 import com.google.gson.JsonParser
-import com.google.gson.JsonSyntaxException
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import java.io.IOException
@@ -35,7 +34,6 @@ object LLMService {
         )
 
         val jsonBody = gson.toJson(requestBody)
-        Log.d(TAG, "发送请求: $jsonBody")
 
         val body = RequestBody.create(jsonMediaType, jsonBody)
         val request = Request.Builder()
@@ -54,7 +52,6 @@ object LLMService {
             override fun onResponse(call: Call, response: Response) {
                 try {
                     val responseBody = response.body?.string() ?: ""
-                    Log.d(TAG, "LLM响应: $responseBody")
 
                     if (!response.isSuccessful) {
                         callback(LLMResult.Error("API返回错误 (${response.code})"))
@@ -88,35 +85,24 @@ object LLMService {
 
     private fun parseIntent(content: String, callback: (LLMResult) -> Unit) {
         try {
-            val cleanJson = content
-                .trim()
-                .removePrefix("json") .removePrefix("")
-                .removeSuffix("") .trim()
-            val intent = gson.fromJson(cleanJson, FlightIntent::class.java)
-
-            if (intent.flightType == "unknown") {
-                val reason = intent.parameters.reason ?: "无法识别飞行意图"
-                callback(LLMResult.Unknown(reason))
-                return
-            }
-
+            val intent = FlightIntentParser.parse(content)
             val summary = buildSummary(intent)
             callback(LLMResult.Success(intent, summary))
-        } catch (e: JsonSyntaxException) {
-            Log.e(TAG, "JSON解析失败: $content", e)
-            callback(LLMResult.Error("LLM返回格式异常，请重试"))
+        } catch (e: IllegalArgumentException) {
+            callback(LLMResult.Unknown("飞控参数无效：${e.message}"))
         }
     }
 
     private fun buildSummary(intent: FlightIntent): String {
         val p = intent.parameters
         return when (intent.flightType) {
-            "takeoff" -> buildString {
-                append("起飞\n")
-                p.altitude?.let { append("目标高度：${it} 米") }
-            }
+            "takeoff" -> "自动起飞（无目标高度参数）"
+            "stop_takeoff" -> "停止自动起飞"
             "land" -> "降落"
+            "stop_landing" -> "停止自动降落"
+            "confirm_landing" -> "确认继续降落"
             "return_home" -> "返航至起飞点"
+            "stop_return_home" -> "停止返航"
             "hover" -> buildString {
                 append("悬停\n")
                 append("时长：${p.duration ?: 5} 秒")
@@ -132,7 +118,7 @@ object LLMService {
                 p.yaw?.let { append("\n偏航：${it}°") }
             }
             "fly_to" -> buildString {
-                append("定向飞行")
+                append("相对机头方向移动（机体坐标系）")
                 p.direction?.let {
                     val dirName = when (it) {
                         "forward" -> "前方"
@@ -144,9 +130,11 @@ object LLMService {
                     append("\n方向：${dirName}")
                 }
                 p.distance?.let { append("\n距离：${it} 米") }
-                p.altitude?.let { append("\n高度：${it} 米") }
                 p.speed?.let { append("\n速度：${it} m/s") }
             }
+            "change_altitude" -> "改变相对起飞点高度至 ${p.altitude} 米，速度 ${p.speed} 米/秒"
+            "rotate" -> "相对机头旋转 ${p.yaw} 度"
+            "set_return_home_height" -> "设置相对起飞点返航高度 ${p.altitude} 米"
             "orbit" -> buildString {
                 append("环绕飞行")
                 p.radius?.let { append("\n半径：${it} 米") }

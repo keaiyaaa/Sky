@@ -8,6 +8,8 @@ LLM 返回的飞行意图完整数据 */ data class FlightIntent( @SerializedNam
                                          @SerializedName("speed") val speed: Double? = null,
                                          @SerializedName("distance") val distance: Double? = null,
                                          @SerializedName("direction") val direction: String? = null,
+                                         @SerializedName("referenceFrame") val referenceFrame: String? = null,
+                                         @SerializedName("altitudeReference") val altitudeReference: String? = null,
                                          @SerializedName("duration") val duration: Int? = null,
                                          @SerializedName("count") val count: Int? = null,
                                          @SerializedName("radius") val radius: Double? = null,

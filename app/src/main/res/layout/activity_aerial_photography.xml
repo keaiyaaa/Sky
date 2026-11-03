@@ -36,6 +36,32 @@
             android:background="#000000"
             android:visibility="gone" />
 
+        <TextView
+            android:id="@+id/tvVideoSourceLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="bottom|start"
+            android:layout_margin="12dp"
+            android:background="#99000000"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:text="演示画面 · 真实图传待接入"
+            android:textColor="#FFFFFF"
+            android:textSize="11sp" />
+
+        <TextView
+            android:id="@+id/tvRetryDemoVideo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:background="#CC000000"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="12dp"
+            android:text="演示视频加载失败，点此重试"
+            android:textColor="#FFFFFF"
+            android:visibility="gone" />
+
     </FrameLayout>
 
     <!-- 顶部状态栏 -->

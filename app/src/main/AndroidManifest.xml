@@ -96,6 +96,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".auth.DemoLoginActivity"
+            android:exported="false"
+            android:screenOrientation="landscape" />
+
         <activity android:name=".ui.flight.FlightControlActivity" android:screenOrientation="landscape" />
         <activity android:name=".ui.route.RoutePlanActivity" android:screenOrientation="landscape" />
         <activity android:name=".ui.mission.MissionCenterActivity" android:screenOrientation="landscape" />
