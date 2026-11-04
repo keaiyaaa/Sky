@@ -29,4 +29,11 @@ class SyncBatch(
         completed = true
         onComplete(fields.associateWith { results[it] })
     }
+
+    @Synchronized
+    fun invalidate(reason: String) {
+        if (completed) return
+        fields.forEach { results[it] = reason }
+        finishIfReady()
+    }
 }

@@ -44,6 +44,9 @@ class PreferenceManager private constructor(context: Context) {
         }
     }
 
+    // Legacy settings API only, retained for migration/compatibility.
+    // F18 uses settings.UserSettingsPreferences with database v2 defaults, codes and units.
+    // These old percentage/quality values must not be serialized as database v2 fields.
     // 飞控参数
     fun getReturnAltitude(): Int = prefs.getInt(KEY_RETURN_ALTITUDE, 120)
     fun setReturnAltitude(value: Int) = prefs.edit().putInt(KEY_RETURN_ALTITUDE, value).apply()

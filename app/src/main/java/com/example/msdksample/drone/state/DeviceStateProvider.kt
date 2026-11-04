@@ -145,7 +145,7 @@ class SessionDeviceStateStore(
     }
 
     fun telemetry(value: TelemetrySnapshot): Boolean = commit(value.generation) { before ->
-        if (value.receivedAtMonotonicMs > monotonicMs() || value.receivedAtMonotonicMs <
+        if (value.receivedAtMonotonicMs < 0 || value.receivedAtMonotonicMs > monotonicMs() || value.receivedAtMonotonicMs <
             (before.telemetry?.receivedAtMonotonicMs ?: Long.MIN_VALUE)) return@commit before
         val expectedSource = when (before.mode) {
             DeviceMode.DEVICE -> TelemetrySource.DEVICE; DeviceMode.DJI_SIMULATOR -> TelemetrySource.DJI_SIMULATOR
@@ -157,10 +157,13 @@ class SessionDeviceStateStore(
         if (fields.any { it.source != null && it.source != expectedSource }) return@commit before
         fun valid(field: TelemetryField): Boolean {
             val item = value.field(field)
+            val previous = before.telemetry?.field(field)?.observedAtMonotonicMs
+            val observed = item.observedAtMonotonicMs
+            if (observed != null && (observed < 0 || observed > value.receivedAtMonotonicMs ||
+                    (previous != null && observed < previous))) return false
             if (!item.valid) return item.value == null
             val time = item.observedAtMonotonicMs ?: return false
             if (item.value == null || item.source != expectedSource || item.observedAtEpochMs == null || time > monotonicMs()) return false
-            val previous = before.telemetry?.field(field)?.observedAtMonotonicMs
             if (previous != null && time < previous) return false
             val number = (item.value as? Number)?.toDouble()
             if (number != null && !number.isFinite()) return false

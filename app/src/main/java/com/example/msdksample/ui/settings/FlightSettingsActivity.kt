@@ -3,140 +3,127 @@ package com.example.msdksample.ui.settings
 import android.view.View
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.core.widget.doAfterTextChanged
 import com.example.msdksample.R
 import com.example.msdksample.base.BaseActivity
 import com.example.msdksample.databinding.ActivityFlightSettingsBinding
-import com.example.msdksample.drone.DroneManager
-import com.example.msdksample.utils.PreferenceManager
+import com.example.msdksample.settings.*
+import java.math.BigDecimal
 
 class FlightSettingsActivity : BaseActivity<ActivityFlightSettingsBinding>() {
-
-    private lateinit var prefs: PreferenceManager
+    private lateinit var preferences: UserSettingsPreferences
     private lateinit var sync: SettingsSyncController
-
+    private var needsSensitivityReview = false
     override fun getViewBinding() = ActivityFlightSettingsBinding.inflate(layoutInflater)
 
     override fun initViews() {
-        prefs = PreferenceManager.getInstance(this)
-        sync = SettingsSyncController(this) { text, busy ->
+        preferences = UserSettingsPreferences(this)
+        sync = SettingsSyncController(this, onChanged = { text, busy ->
             binding.tvSyncStatus.text = text
             binding.btnSave.isEnabled = !busy
-        }
-
-        // 设置工具栏
+        })
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        supportActionBar?.setHomeButtonEnabled(true)
         binding.toolbar.setNavigationOnClickListener { finish() }
-
-        // 加载保存的设置
-        loadSettings()
-
-        // 监听器
-        setupListeners()
+        runCatching { loadSettings() }.onFailure {
+            binding.tvSyncStatus.text = "无法读取本地设置：${it.message}"
+            binding.btnSave.isEnabled = false
+            return
+        }
+        binding.etReturnAltitude.doAfterTextChanged {
+            val text = it.toString().trim()
+            binding.tvAltitudeValue.text = if (text.isEmpty()) "未设置" else "${text}m"
+        }
+        binding.sbAltitude.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                val meters = (progress + 20).coerceAtMost(if (binding.switchBeginner.isChecked) 30 else 400)
+                binding.etReturnAltitude.setText("$meters.00")
+                if (meters != progress + 20) binding.sbAltitude.progress = meters - 20
+            }
+            override fun onStartTrackingTouch(bar: SeekBar?) {}
+            override fun onStopTrackingTouch(bar: SeekBar?) {}
+        })
+        binding.sbSensitivity.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(bar: SeekBar?, progress: Int, fromUser: Boolean) {
+                binding.tvSensitivityValue.text = "${progress + 1} 档（1–10）"
+                if (fromUser) binding.cbSensitivityConfirm.isChecked = true
+            }
+            override fun onStartTrackingTouch(bar: SeekBar?) {}
+            override fun onStopTrackingTouch(bar: SeekBar?) {}
+        })
+        binding.switchBeginner.setOnCheckedChangeListener { _, enabled ->
+            binding.tvBeginnerWarning.visibility = if (enabled) View.VISIBLE else View.GONE
+            val altitude = binding.etReturnAltitude.text.toString().toBigDecimalOrNull()
+            if (enabled && altitude != null && altitude > BigDecimal("30")) {
+                binding.etReturnAltitude.setText("30.00")
+                binding.sbAltitude.progress = 10
+                Toast.makeText(this, "仅调整本地返航高度选项为30米，尚未确认飞机限制", Toast.LENGTH_LONG).show()
+            }
+        }
+        binding.btnSave.setOnClickListener { saveSettings() }
     }
 
     private fun loadSettings() {
-        // 返航高度
-        val altitude = prefs.getReturnAltitude().coerceIn(20, if (prefs.isBeginnerMode()) 30 else 400)
-        binding.sbAltitude.progress = altitude - 20 // 20-400, 范围380
-        binding.tvAltitudeValue.text = "${altitude}m"
-
-        // 失控行为
-        val failsafeAction = prefs.getFailsafeAction()
-        when (failsafeAction) {
-            "rth" -> binding.rbFailsafeRth.isChecked = true
-            "hover" -> binding.rbFailsafeHover.isChecked = true
-            "land" -> binding.rbFailsafeLand.isChecked = true
+        val loaded = preferences.load()
+        val values = loaded.settings
+        needsSensitivityReview = loaded.sensitivityNeedsReview
+        binding.tvSettingsMigration.text = loaded.notes.joinToString("\n")
+        binding.tvSettingsMigration.visibility = if (loaded.notes.isEmpty()) View.GONE else View.VISIBLE
+        binding.cbSensitivityConfirm.visibility = if (needsSensitivityReview) View.VISIBLE else View.GONE
+        binding.cbSensitivityConfirm.isChecked = !needsSensitivityReview
+        binding.etReturnAltitude.setText(values.return_altitude_m?.toPlainString().orEmpty())
+        binding.tvAltitudeValue.text = values.return_altitude_m?.let { "${it.toPlainString()}m" } ?: "未设置"
+        binding.sbAltitude.progress = ((values.return_altitude_m?.toInt() ?: 20) - 20).coerceIn(0, 380)
+        when (values.failsafe_action) {
+            "0" -> binding.rbFailsafeRth.isChecked = true
+            "1" -> binding.rbFailsafeHover.isChecked = true
+            "2" -> binding.rbFailsafeLand.isChecked = true
+            else -> binding.rgFailsafe.clearCheck()
         }
-
-        // 新手模式
-        val beginnerMode = prefs.isBeginnerMode()
-        binding.switchBeginner.isChecked = beginnerMode
-        binding.tvBeginnerWarning.visibility = if (beginnerMode) View.VISIBLE else View.GONE
-
-        // 避障行为
-        val obstacleAction = prefs.getObstacleAction()
-        when (obstacleAction) {
-            "brake" -> binding.rbObstacleBrake.isChecked = true
-            "bypass" -> binding.rbObstacleBypass.isChecked = true
+        when (values.obstacle_action) {
+            "0" -> binding.rbObstacleBypass.isChecked = true
+            "1" -> binding.rbObstacleBrake.isChecked = true
+            else -> binding.rgObstacle.clearCheck()
         }
-
-        // 灵敏度
-        val sensitivity = prefs.getControlSensitivity()
-        binding.sbSensitivity.progress = sensitivity
-        binding.tvSensitivityValue.text = "${sensitivity}%"
+        binding.switchBeginner.isChecked = values.beginner_mode == "1"
+        binding.tvBeginnerWarning.visibility = if (binding.switchBeginner.isChecked) View.VISIBLE else View.GONE
+        binding.sbSensitivity.progress = (values.control_sensitivity - 1).coerceIn(0, 9)
+        binding.tvSensitivityValue.text = "${binding.sbSensitivity.progress + 1} 档（1–10）"
     }
 
-    private fun setupListeners() {
-        // 返航高度
-        binding.sbAltitude.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (binding.switchBeginner.isChecked && progress > 10) {
-                    binding.sbAltitude.progress = 10
-                    return
-                }
-                val altitude = progress + 20
-                binding.tvAltitudeValue.text = "${altitude}m"
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
-            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
-        })
-
-        // 新手模式
-        binding.switchBeginner.setOnCheckedChangeListener { _, isChecked ->
-            binding.tvBeginnerWarning.visibility = if (isChecked) View.VISIBLE else View.GONE
-            if (isChecked && binding.sbAltitude.progress > 10) {
-                // 新手模式下限制返航高度最大30米
-                binding.sbAltitude.progress = 10
-                binding.tvAltitudeValue.text = "30m"
-                Toast.makeText(this, "新手模式下返航高度限制为30米", Toast.LENGTH_SHORT).show()
-            }
+    private fun saveSettings() {
+        val heightText = binding.etReturnAltitude.text.toString().trim()
+        val height = if (heightText.isBlank()) null else heightText.toBigDecimalOrNull()
+        if (heightText.isNotBlank() && (height == null || SettingField.RETURN_ALTITUDE.validate(heightText) != null)) {
+            binding.etReturnAltitude.error = "请输入20–400米，最多两位小数；留空表示未设置"
+            binding.tvSyncStatus.text = "本地未保存：请修正返航高度，未尝试同步。"
+            binding.etReturnAltitude.requestFocus(); return
         }
-
-        // 保存按钮
-        binding.btnSave.setOnClickListener {
-            saveSettingsAndSyncToDrone()
+        if (needsSensitivityReview && !binding.cbSensitivityConfirm.isChecked) {
+            binding.tvSyncStatus.text = "旧灵敏度百分比已备份，请重新选择或确认1–10档后保存。"
+            return
         }
+        var localSaved = false
+        runCatching {
+            val current = preferences.load().settings
+            val updated = current.copy(return_altitude_m = height,
+                failsafe_action = when (binding.rgFailsafe.checkedRadioButtonId) {
+                    R.id.rb_failsafe_rth -> "0"; R.id.rb_failsafe_hover -> "1"; R.id.rb_failsafe_land -> "2"; else -> ""
+                }, obstacle_action = when (binding.rgObstacle.checkedRadioButtonId) {
+                    R.id.rb_obstacle_bypass -> "0"; R.id.rb_obstacle_brake -> "1"; else -> ""
+                }, beginner_mode = if (binding.switchBeginner.isChecked) "1" else "0",
+                control_sensitivity = binding.sbSensitivity.progress + 1)
+            require(updated.validationErrors().isEmpty()) { updated.validationErrors().joinToString("\n") }
+            preferences.save(updated, sensitivityReviewed = true)
+            localSaved = true
+            needsSensitivityReview = false
+            binding.cbSensitivityConfirm.visibility = View.GONE
+            binding.tvSettingsMigration.text = "旧设置备份仍保留；当前使用数据库v2字段。"
+            sync.start(updated.normalized().values().filter { it.field in setOf(SettingField.RETURN_ALTITUDE,
+                SettingField.FAILSAFE, SettingField.BEGINNER, SettingField.OBSTACLE, SettingField.SENSITIVITY) })
+        }.onFailure { binding.tvSyncStatus.text = if (localSaved) "本地已保存 · 同步未完成：${it.message}" else "本地未保存：${it.message}" }
     }
 
-    private fun saveSettingsAndSyncToDrone() {
-        // 1. 保存到本地 SharedPreferences
-        val altitude = binding.sbAltitude.progress + 20
-        prefs.setReturnAltitude(altitude)
-
-        val failsafeAction = when (binding.rgFailsafe.checkedRadioButtonId) {
-            R.id.rb_failsafe_rth -> "rth"
-            R.id.rb_failsafe_hover -> "hover"
-            else -> "land"
-        }
-        prefs.setFailsafeAction(failsafeAction)
-
-        val beginnerMode = binding.switchBeginner.isChecked
-        prefs.setBeginnerMode(beginnerMode)
-
-        val obstacleAction = when (binding.rgObstacle.checkedRadioButtonId) {
-            R.id.rb_obstacle_brake -> "brake"
-            else -> "bypass"
-        }
-        prefs.setObstacleAction(obstacleAction)
-
-        val sensitivity = binding.sbSensitivity.progress
-        prefs.setControlSensitivity(sensitivity)
-
-        // Each value must receive its own confirmation before reporting success.
-        val droneManager = DroneManager.getInstance()
-        sync.start(listOf(
-            SettingOperation("返航高度", "${altitude}m") { droneManager.setReturnAltitude(altitude, it) },
-            SettingOperation("失控行为", mapOf("rth" to "返航", "hover" to "悬停", "land" to "降落").getValue(failsafeAction)) { droneManager.setFailsafeAction(failsafeAction, it) },
-            SettingOperation("新手模式", if (beginnerMode) "开启" else "关闭") { droneManager.setBeginnerMode(beginnerMode, it) },
-            SettingOperation("避障行为", if (obstacleAction == "brake") "刹停" else "绕行") { droneManager.setObstacleAction(obstacleAction, it) },
-            SettingOperation("灵敏度", "$sensitivity%") { droneManager.setControlSensitivity(sensitivity, it) }
-        ))
-    }
-
-    override fun onDestroy() {
-        sync.detach()
-        super.onDestroy()
-    }
+    override fun onDestroy() { sync.detach(); super.onDestroy() }
 }

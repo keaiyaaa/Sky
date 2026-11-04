@@ -22,7 +22,8 @@ import com.example.msdksample.base.BaseActivity
 import com.example.msdksample.databinding.ActivityHomeBinding
 import com.example.msdksample.databinding.DialogSdkTestBinding
 import com.example.msdksample.drone.DroneManager
-import com.example.msdksample.drone.FlightTelemetry
+import com.example.msdksample.drone.TelemetryDisplay
+import com.example.msdksample.drone.TelemetryUiObserver
 import com.example.msdksample.drone.state.DeviceStateSnapshot
 import com.example.msdksample.drone.state.DeviceStateSubscription
 import com.example.msdksample.drone.state.DeviceStatePresentation
@@ -57,10 +58,6 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
     @Volatile private var pageActive = false
     @Volatile private var pageEpoch = 0L
     private var stateSubscription: DeviceStateSubscription? = null
-    private val telemetryListener = DroneManager.TelemetryListener { sample ->
-        val epoch = pageEpoch
-        runOnUiThread { if (pageActive && epoch == pageEpoch && !isDestroyed) renderTelemetry(sample) }
-    }
 
     override fun getViewBinding() = ActivityHomeBinding.inflate(layoutInflater)
 
@@ -118,7 +115,7 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
             startActivity(Intent(this, RoutePlanningActivity::class.java))
         }
 
-        renderTelemetry(DroneManager.getInstance().getTelemetry())
+        renderTelemetry(TelemetryDisplay.from(DroneManager.getInstance().deviceStateProvider.currentSnapshot(), SystemClock.elapsedRealtime()))
         binding.tvProgress.text = "--"
         binding.tvCompletedWaypoints.text = "--"
         binding.tvDefectCount.text = "--"
@@ -128,13 +125,13 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
         initHomeDemoVideo()
     }
 
-    private fun renderTelemetry(sample: FlightTelemetry) {
+    private fun renderTelemetry(sample: TelemetryDisplay) {
         fun value(number: Float?) = number?.let { String.format(Locale.CHINA, "%.1f", it) } ?: "--"
         binding.tvOsdHeight.text = "H:${value(sample.altitudeMeters)}m"
         binding.tvOsdDistance.text = "D:${value(sample.distanceMeters)}m"
         binding.tvOsdSpeed.text = "SPD:${value(sample.speedMetersPerSecond)}m/s"
         binding.tvBattery.text = sample.batteryPercent?.let { "$it%" } ?: "--%"
-        binding.tvTelemetrySource.text = sample.sourceLabel
+        binding.tvTelemetrySource.text = "${sample.sourceLabel} · 信号${sample.signalPercent?.let { "$it%" } ?: "--%"}"
     }
 
     // ── 左侧抽屉菜单 ──────────────────────────────────────────────
@@ -283,10 +280,12 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
         super.onStart()
         pageActive = true
         val epoch = ++pageEpoch
-        stateSubscription = DroneManager.getInstance().deviceStateProvider.subscribe { state ->
-            runOnUiThread { if (pageActive && epoch == pageEpoch && !isDestroyed) updateSdkStatusText(state) }
+        stateSubscription = TelemetryUiObserver(DroneManager.getInstance().deviceStateProvider) { state, display ->
+            if (pageActive && epoch == pageEpoch && !isDestroyed) {
+                updateSdkStatusText(state)
+                renderTelemetry(display)
+            }
         }
-        DroneManager.getInstance().addTelemetryListener(telemetryListener)
     }
 
     override fun onStop() {
@@ -294,7 +293,6 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
         pageEpoch++
         stateSubscription?.cancel()
         stateSubscription = null
-        DroneManager.getInstance().removeTelemetryListener(telemetryListener)
         sdkTestDialog?.dismiss()
         deviceTapCount = 0
         super.onStop()

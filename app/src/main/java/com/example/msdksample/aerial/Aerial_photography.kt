@@ -22,31 +22,34 @@ import com.example.msdksample.aerial.camera.CameraAction
 import com.example.msdksample.aerial.camera.CameraOperationController
 import com.example.msdksample.aerial.camera.DjiCameraGateway
 import com.example.msdksample.drone.DroneManager
-import com.example.msdksample.drone.FlightTelemetry
+import com.example.msdksample.drone.TelemetryDisplay
+import com.example.msdksample.drone.TelemetryUiObserver
+import com.example.msdksample.drone.state.DeviceStateSubscription
 
 class Aerial_photography : AppCompatActivity() {
     private lateinit var binding: ActivityAerialPhotographyBinding
     private val handler = Handler(Looper.getMainLooper())
-    private val telemetryListener = DroneManager.TelemetryListener { sample ->
-        runOnUiThread { if (::binding.isInitialized && !isDestroyed) renderFlightTelemetry(sample) }
-    }
+    private var telemetrySubscription: DeviceStateSubscription? = null
 
-    private fun renderFlightTelemetry(sample: FlightTelemetry) {
+    private fun renderFlightTelemetry(sample: TelemetryDisplay) {
         fun value(number: Float?) = number?.let { String.format(Locale.CHINA, "%.1f", it) } ?: "--"
         binding.tvHeight.text = "${value(sample.altitudeMeters)}m"
         binding.tvDistance.text = "${value(sample.distanceMeters)}m"
         binding.tvSpeed.text = "${value(sample.speedMetersPerSecond)}m/s"
         binding.tvBattery.text = sample.batteryPercent?.let { "$it%" } ?: "--%"
-        binding.tvTelemetrySource.text = "${sample.sourceLabel} · 画面为演示"
+        binding.tvTelemetrySource.text = "${sample.sourceLabel} · 信号${sample.signalPercent?.let { "$it%" } ?: "--%"} · 画面为演示"
     }
 
     override fun onStart() {
         super.onStart()
-        if (::binding.isInitialized) DroneManager.getInstance().addTelemetryListener(telemetryListener)
+        if (::binding.isInitialized) telemetrySubscription = TelemetryUiObserver(DroneManager.getInstance().deviceStateProvider) { _, display ->
+            if (!isDestroyed) renderFlightTelemetry(display)
+        }
     }
 
     override fun onStop() {
-        DroneManager.getInstance().removeTelemetryListener(telemetryListener)
+        telemetrySubscription?.cancel()
+        telemetrySubscription = null
         super.onStop()
     }
     private var isControlMode = false

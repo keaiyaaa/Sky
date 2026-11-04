@@ -23,6 +23,8 @@ import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import com.example.msdksample.drone.state.*
+import com.example.msdksample.settings.SettingValue
+import com.example.msdksample.settings.SettingsDispatchPolicy
 import android.os.SystemClock
 
 /**
@@ -330,7 +332,10 @@ class DroneManager private constructor() {
     private val mainHandler = Handler(Looper.getMainLooper())
     private val telemetryStaleCheck = Runnable {
         val visible = getTelemetry()
-        if (visible != telemetry) publishTelemetry(visible)
+        // Expiry is a UI event, not a new sensor observation.
+        if (visible != telemetry) telemetryListeners.forEach { listener ->
+            runCatching { listener.onTelemetryChanged(visible) }
+        }
     }
     private val initTimeout = Runnable {
         if (sdkState == SdkState.INITIALIZING || sdkState == SdkState.REGISTERING) {
@@ -1359,6 +1364,19 @@ class DroneManager private constructor() {
     // ============================================================
     //  内部工具方法
     // ============================================================
+
+    /** Canonical F18 gateway. Real parameter adapters need verified capabilities and readback first. */
+    fun applyUserSetting(setting: SettingValue, expectedGeneration: Long, callback: (Boolean, String?) -> Unit) {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            mainHandler.post { applyUserSetting(setting, expectedGeneration, callback) }; return
+        }
+        val error = setting.field.validate(setting.value)
+            ?: (if (setting.field.cloudOnly) "后端未接入，巡查记录同步仅保存本地选择" else null)
+            ?: SettingsDispatchPolicy.rejection(contractState.currentSnapshot(), expectedGeneration)
+        if (error != null) { callback(false, error); return }
+        if (setting.value == null) { callback(false, "参数未设置，未下发"); return }
+        if (!handleLocalSetting(callback)) callback(false, "真实参数适配尚未验证，未下发")
+    }
 
     private fun handleLocalSetting(callback: ((Boolean, String?) -> Unit)?): Boolean {
         if (!simulatorActive) return false

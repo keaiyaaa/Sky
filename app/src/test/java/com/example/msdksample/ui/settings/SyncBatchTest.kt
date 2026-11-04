@@ -4,6 +4,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SyncBatchTest {
+    @Test fun sessionChangeInvalidatesEarlierAcknowledgementsAndPendingFields() {
+        var result: Map<String, String?>? = null
+        var completions = 0
+        val batch = SyncBatch(listOf("a", "b")) { result = it; completions++ }
+        batch.reply("a", true, null)
+        batch.invalidate("STALE_GENERATION")
+        batch.reply("b", true, null)
+        batch.invalidate("重复")
+        assertEquals(1, completions)
+        assertEquals(setOf("STALE_GENERATION"), result!!.values.toSet())
+    }
     @Test fun waitsForEveryFieldAndPreservesPartialFailure() {
         var result: Map<String, String?>? = null
         val batch = SyncBatch(listOf("高度", "避障", "画质")) { result = it }

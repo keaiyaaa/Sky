@@ -20,13 +20,20 @@
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1"
-            android:padding="16dp">
+            android:padding="16dp"
+            android:clipToPadding="false">
 
         <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical">
 
+            <TextView
+                    android:id="@+id/tv_settings_migration"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/gray_700"
+                    android:layout_marginBottom="12dp" />
             <!-- 返航高度 -->
             <androidx.cardview.widget.CardView
                     android:layout_width="match_parent"
@@ -80,19 +87,28 @@
                                 android:id="@+id/tv_altitude_value"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="120m"
+                                android:text="100.00m"
                                 android:textSize="18sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/primary" />
                     </LinearLayout>
 
+                    <EditText
+                            android:id="@+id/et_return_altitude"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
+                            android:inputType="numberDecimal"
+                            android:maxLength="12"
+                            android:singleLine="true"
+                            android:hint="返航高度（米，最多两位小数，留空为未设置）" />
                     <SeekBar
                             android:id="@+id/sb_altitude"
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
                             android:max="380"
-                            android:progress="100"
+                            android:progress="80"
                             android:progressDrawable="@drawable/slider_progress"
                             android:thumb="@drawable/slider_thumb" />
 
@@ -114,7 +130,7 @@
                                 android:layout_width="0dp"
                                 android:layout_height="wrap_content"
                                 android:layout_weight="1"
-                                android:text="120m"
+                                android:text="210m"
                                 android:textSize="9sp"
                                 android:textColor="@color/gray_400"
                                 android:gravity="center" />
@@ -415,7 +431,7 @@
                                 android:id="@+id/tv_sensitivity_value"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="50%"
+                                android:text="5 档（1–10）"
                                 android:textSize="16sp"
                                 android:textStyle="bold"
                                 android:textColor="@color/purple_500" />
@@ -426,13 +442,19 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="16dp"
-                            android:max="100"
-                            android:progress="50"
+                            android:max="9"
+                            android:progress="4"
                             android:progressDrawable="@drawable/slider_progress_purple"
                             android:thumb="@drawable/slider_thumb_purple" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
+            <CheckBox
+                    android:id="@+id/cb_sensitivity_confirm"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="已重新选择或确认当前灵敏度（1–10档）"
+                    android:visibility="gone" />
             <!-- 保存按钮 -->
             <TextView
                     android:id="@+id/tv_sync_status"

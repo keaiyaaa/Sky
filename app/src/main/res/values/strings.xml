@@ -34,16 +34,16 @@
     <string name="flight_obstacle">避障行为</string>
     <string name="flight_obstacle_desc">检测到障碍物时的处理方式</string>
     <string name="flight_sensitivity">操控灵敏度</string>
-    <string name="flight_sensitivity_desc">摇杆响应灵敏度调节</string>
+    <string name="flight_sensitivity_desc">本地1–10档，设备响应仍待验证</string>
 
     <!-- 图传设置 -->
     <string name="video_settings">图传画质设置</string>
     <string name="video_quality">视频画质模式</string>
-    <string name="video_quality_desc">实时图传视频质量设置</string>
+    <string name="video_quality_desc">当前仅开放1080p，设备支持情况待验证</string>
     <string name="image_quality">图片画质模式</string>
-    <string name="image_quality_desc">拍摄照片质量设置</string>
+    <string name="image_quality_desc">当前仅开放high，不指定拍摄像素</string>
     <string name="auto_sync">自动同步巡查记录</string>
-    <string name="auto_sync_desc">任务结束后自动上传数据至云端</string>
+    <string name="auto_sync_desc">仅保存本地选择，后端接入后再启用云端同步</string>
     <string name="low_battery_return">低电量自动返航</string>
     <string name="low_battery_return_desc">当电池电量低于20%时强制执行</string>
     <string name="save_settings">保存设置</string>

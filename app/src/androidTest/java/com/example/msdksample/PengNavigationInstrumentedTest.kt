@@ -25,6 +25,8 @@ class PengNavigationInstrumentedTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val manager = DroneManager.getInstance()
         instrumentation.runOnMainSync {
+            com.example.msdksample.settings.UserSettingsPreferences(instrumentation.targetContext)
+                .save(com.example.msdksample.settings.UserSettings(), sensitivityReviewed = true)
             manager.initSDK(instrumentation.targetContext)
             manager.enableSimulator()
             manager.setDemoScenario(DroneManager.DemoScenario.SYNC_FAILED) { _, _ -> }
@@ -36,7 +38,7 @@ class PengNavigationInstrumentedTest {
                 scenario.onActivity { manager.setDemoScenario(DroneManager.DemoScenario.NORMAL) { _, _ -> } }
                 clickSaveByScrolling()
                 awaitSyncText("演示同步成功")
-                onView(withId(R.id.tv_sync_status)).check(matches(withText(containsString("演示确认=120m"))))
+                onView(withId(R.id.tv_sync_status)).check(matches(withText(containsString("演示确认=100.00m"))))
             }
             ActivityScenario.launch(VideoSettingsActivity::class.java).use {
                 clickSaveByScrolling()
