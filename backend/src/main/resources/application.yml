@@ -1,0 +1,56 @@
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
+
+spring:
+  application:
+    name: sky-backend
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/tianshu?useUnicode=true&characterEncoding=utf8&serverTimezone=UTC}
+    username: ${DB_USERNAME:tianshu}
+    password: ${DB_PASSWORD:}
+    hikari:
+      initialization-fail-timeout: -1
+  jpa:
+    open-in-view: false
+    database-platform: org.hibernate.dialect.MySQLDialect
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        boot:
+          allow_jdbc_metadata_access: false
+  flyway:
+    enabled: false
+    locations: classpath:db/migration
+  jackson:
+    time-zone: UTC
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"

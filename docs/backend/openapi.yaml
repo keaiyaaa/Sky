@@ -1,0 +1,475 @@
+openapi: 3.1.0
+info:
+  title: 天枢巡检系统公共后端契约
+  version: 1.0.0-draft
+  description: T01 公共契约草案；认证与同步业务控制器尚未实现。
+servers:
+  - url: /api/v1
+    description: 服务主机和证书由部署环境确定
+security:
+  - BearerAuth: []
+paths:
+  /system/ping:
+    get:
+      operationId: getSystemPing
+      summary: 骨架示例接口
+      description: 仅返回非敏感服务状态和 API 主版本。
+      security: []
+      responses:
+        '200':
+          description: 服务进程可处理 HTTP 请求
+          headers:
+            X-Request-Id:
+              $ref: '#/components/headers/RequestId'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+              example:
+                status: UP
+                apiVersion: v1
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /auth/register:
+    post:
+      operationId: register
+      summary: 注册账号
+      description: T03 实现；匿名可访问。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: 注册成功并创建会话
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /auth/login:
+    post:
+      operationId: login
+      summary: 登录
+      description: T03 实现；账号不存在和密码错误使用相同失败提示。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /auth/refresh:
+    post:
+      operationId: refreshSession
+      summary: 轮换会话令牌
+      description: T03 实现；成功后旧刷新令牌立即失效。
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: 已轮换访问与刷新令牌
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /auth/logout:
+    post:
+      operationId: logout
+      summary: 注销当前会话
+      description: T03 实现；撤销当前刷新会话族。
+      responses:
+        '204':
+          description: 会话已撤销
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /sync/push:
+    post:
+      operationId: pushSyncChange
+      summary: 幂等推送一个业务聚合
+      description: 后续阶段实现；业务写入、幂等收据和变化游标在同一事务提交。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SyncPushRequest'
+            examples:
+              createRoute:
+                summary: 新建航线聚合
+                value:
+                  entityType: ROUTE
+                  clientId: route-local-7f31
+                  operation: UPSERT
+                  expectedVersion: 0
+                  idempotencyKey: 01JBC8T2RXB4Y4AAB8T3P4Y8XQ
+                  payload:
+                    name: 北区教学路线
+                    waypoints: []
+      responses:
+        '200':
+          description: 已保存或返回同键同请求的既有结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncPushResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /sync/changes:
+    get:
+      operationId: getSyncChanges
+      summary: 拉取当前用户的已提交变化
+      description: 游标是不透明值；cursor=0 为初始位置，过期游标返回 CURSOR_EXPIRED。
+      parameters:
+        - name: cursor
+          in: query
+          required: true
+          schema:
+            type: string
+          example: '0'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+      responses:
+        '200':
+          description: 变化页
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncChangesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+  headers:
+    RequestId:
+      description: 服务端生成的追踪 ID；错误体 requestId 与该值一致。
+      schema:
+        type: string
+        format: uuid
+  responses:
+    BadRequest:
+      description: 请求格式或字段校验失败
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          example:
+            code: VALIDATION_FAILED
+            message: 请求参数无效
+            requestId: 0192f1be-1234-7abc-8def-0123456789ab
+            fieldErrors:
+              - field: username
+                reason: 长度不符合要求
+    Unauthorized:
+      description: 缺少、无效或过期的凭证
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: 版本、幂等键或同步游标冲突
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+          examples:
+            versionConflict:
+              value:
+                code: VERSION_CONFLICT
+                message: 资源已被其他请求更新
+                requestId: 0192f1be-1234-7abc-8def-0123456789ab
+                fieldErrors: []
+            idempotencyKeyReused:
+              value:
+                code: IDEMPOTENCY_KEY_REUSED
+                message: 幂等键已用于不同请求
+                requestId: 0192f1be-1234-7abc-8def-0123456789ab
+                fieldErrors: []
+            cursorExpired:
+              value:
+                code: CURSOR_EXPIRED
+                message: 同步游标已过期，请重新建立本地数据
+                requestId: 0192f1be-1234-7abc-8def-0123456789ab
+                fieldErrors: []
+    TooManyRequests:
+      description: 请求频率超过限制
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+            minimum: 1
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    ServiceUnavailable:
+      description: 数据库或必要服务暂不可用
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+  schemas:
+    ApiError:
+      type: object
+      required: [code, message, requestId, fieldErrors]
+      properties:
+        code:
+          type: string
+          description: 稳定机器码，客户端不得依赖自然语言消息分支。
+        message:
+          type: string
+          description: 不含堆栈、SQL 或敏感数据。
+        requestId:
+          type: string
+          format: uuid
+        fieldErrors:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldError'
+    FieldError:
+      type: object
+      required: [field, reason]
+      properties:
+        field:
+          type: string
+        reason:
+          type: string
+    PageResponse:
+      type: object
+      required: [items, page, size, total]
+      properties:
+        items:
+          type: array
+          description: 元素结构由具体业务接口定义。
+          items:
+            type: object
+            additionalProperties: true
+        page:
+          type: integer
+          minimum: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+        total:
+          type: integer
+          format: int64
+          minimum: 0
+    PingResponse:
+      type: object
+      required: [status, apiVersion]
+      properties:
+        status:
+          type: string
+          const: UP
+        apiVersion:
+          type: string
+          const: v1
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          format: password
+          minLength: 10
+          maxLength: 64
+          description: UTF-8 编码长度还必须不超过 BCrypt 的 72 字节上限。
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          minLength: 1
+          maxLength: 64
+        password:
+          type: string
+          format: password
+          minLength: 1
+          maxLength: 64
+    RefreshRequest:
+      type: object
+      additionalProperties: false
+      required: [refreshToken]
+      properties:
+        refreshToken:
+          type: string
+          format: password
+          minLength: 1
+    AuthSessionResponse:
+      type: object
+      required: [user, accessToken, accessExpiresAt, refreshToken, refreshExpiresAt]
+      properties:
+        user:
+          $ref: '#/components/schemas/CurrentUser'
+        accessToken:
+          type: string
+          format: password
+        accessExpiresAt:
+          type: string
+          format: date-time
+          description: RFC 3339 UTC 时间，使用 Z 后缀。
+        refreshToken:
+          type: string
+          format: password
+        refreshExpiresAt:
+          type: string
+          format: date-time
+          description: RFC 3339 UTC 时间，使用 Z 后缀。
+    CurrentUser:
+      type: object
+      required: [userId, username]
+      properties:
+        userId:
+          $ref: '#/components/schemas/Id'
+        username:
+          type: string
+    Id:
+      type: string
+      description: 所有 ID 均作为 JSON 字符串传输。
+      examples: ['42', 'client-route-7f31']
+    SyncPushRequest:
+      type: object
+      additionalProperties: false
+      required: [entityType, clientId, operation, expectedVersion, idempotencyKey]
+      properties:
+        entityType:
+          type: string
+          enum: [ROUTE, DEVICE, USER_SETTING, MISSION_RUN, FLIGHT_LOG]
+        clientId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        operation:
+          type: string
+          enum: [UPSERT, DELETE]
+        expectedVersion:
+          type: integer
+          minimum: 0
+          description: 0 表示新建；更新与删除提交当前服务端版本。
+        idempotencyKey:
+          type: string
+          minLength: 16
+          maxLength: 128
+        payload:
+          type: object
+          description: UPSERT 必填；DELETE 时省略。实体结构由所属模块定义。
+          additionalProperties: true
+    SyncPushResponse:
+      type: object
+      required: [serverId, clientId, version, changeCursor]
+      properties:
+        serverId:
+          $ref: '#/components/schemas/Id'
+        clientId:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        changeCursor:
+          type: string
+          description: 不透明服务端变化游标。
+    SyncChangesResponse:
+      type: object
+      required: [items, nextCursor, hasMore]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SyncChange'
+        nextCursor:
+          type: string
+        hasMore:
+          type: boolean
+    SyncChange:
+      type: object
+      required: [entityType, serverId, clientId, operation, version, changedAt]
+      properties:
+        entityType:
+          type: string
+          enum: [ROUTE, DEVICE, USER_SETTING, MISSION_RUN, FLIGHT_LOG]
+        serverId:
+          $ref: '#/components/schemas/Id'
+        clientId:
+          type: string
+        operation:
+          type: string
+          enum: [UPSERT, DELETE]
+        version:
+          type: integer
+          minimum: 1
+        changedAt:
+          type: string
+          format: date-time
+          description: RFC 3339 UTC 时间，使用 Z 后缀。
+        payload:
+          type: object
+          description: DELETE 墓碑可省略；UPSERT 结构由所属模块定义。
+          additionalProperties: true
