@@ -102,6 +102,16 @@ class DatabaseDataSource(context: Context) {
         }
     }
 
+    /**
+     * 按数据库主键直接定位任务，不受排序/分组影响，彻底避免索引错位。
+     */
+    suspend fun getTaskById(taskId: Long): InspectionTask? {
+        return withContext(Dispatchers.IO) {
+            val entity = taskDao.getTaskById(taskId) ?: return@withContext null
+            convertToTasks(listOf(entity)).firstOrNull()
+        }
+    }
+
     suspend fun getTaskCount(): Int {
         return withContext(Dispatchers.IO) {
             taskDao.getTaskCount()
@@ -138,6 +148,8 @@ class DatabaseDataSource(context: Context) {
                 defectId = entity.defectId,
                 duration = entity.duration,
                 thumbnails = parseThumbnails(entity.thumbnails),
+                id = entity.id,
+                date = entity.date,
                 analysis = analysis?.let {
                     AnalysisInfo(
                         defectType = it.defectType,

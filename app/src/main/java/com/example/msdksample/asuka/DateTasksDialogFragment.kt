@@ -12,9 +12,9 @@ import com.example.msdksample.asuka.data.InspectionDateGroup
 
 class DateTasksDialogFragment(private val group: InspectionDateGroup) : DialogFragment() {
 
-    private var taskSelectedListener: ((Int) -> Unit)? = null
+    private var taskSelectedListener: ((Int, Long) -> Unit)? = null
 
-    fun setOnTaskSelectedListener(listener: (Int) -> Unit) {
+    fun setOnTaskSelectedListener(listener: (Int, Long) -> Unit) {
         this.taskSelectedListener = listener
     }
 
@@ -94,7 +94,7 @@ class DateTasksDialogFragment(private val group: InspectionDateGroup) : DialogFr
             }
 
             itemView.setOnClickListener {
-                taskSelectedListener?.invoke(index)
+                taskSelectedListener?.invoke(index, task.id)
                 dismiss()
             }
 

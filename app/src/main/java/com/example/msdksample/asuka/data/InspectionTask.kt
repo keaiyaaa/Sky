@@ -14,5 +14,9 @@ data class InspectionTask(
     val defectId: String,
     val duration: String,
     val thumbnails: List<String>,
-    val analysis: AnalysisInfo
+    val analysis: AnalysisInfo,
+    /** 数据库主键；0 表示非数据库来源（如 Mock/MSDK 实时数据） */
+    val id: Long = 0,
+    /** 任务所属日期（yyyy-MM-dd）；按 ID 加载详情时用于标题 */
+    val date: String = ""
 )

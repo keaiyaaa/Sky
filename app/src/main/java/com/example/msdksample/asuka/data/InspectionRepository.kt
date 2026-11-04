@@ -118,6 +118,15 @@ class InspectionRepository(context: Context) {
         }
     }
 
+    /**
+     * 按数据库主键定位任务（F14 修复：避免跨日期分组点击的索引错位）。
+     */
+    suspend fun getTaskById(taskId: Long): InspectionTask? {
+        return withContext(Dispatchers.IO) {
+            databaseDataSource.getTaskById(taskId)
+        }
+    }
+
     suspend fun refreshData() {
         withContext(Dispatchers.IO) {
             databaseDataSource.deleteAllTasks()

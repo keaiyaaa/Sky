@@ -24,6 +24,8 @@ class MissionDetailActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMissionDetailBinding
     private var currentDate: String = ""
     private var currentTaskIndex: Int = 0
+    private var currentTaskId: Long = 0
+    private var currentFilter: String = "time-desc"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,14 +40,19 @@ class MissionDetailActivity : AppCompatActivity() {
         binding.btnCreateOrder.setOnClickListener { showSuccessModal() }
         binding.btnFullscreen.setOnClickListener { toggleFullscreen() }
         binding.playOverlay.setOnClickListener { playVideo() }
+        binding.btnFilter.setOnClickListener { showFilterMenu() }
 
         lifecycleScope.launch {
             repository.initializeData()
 
             val date = intent.getStringExtra("date")
             val taskIndex = intent.getIntExtra("taskIndex", -1)
+            val taskId = intent.getLongExtra("taskId", 0L)
 
-            if (date != null && taskIndex >= 0) {
+            // 优先使用稳定任务 ID（F14：跨日期分组点击不再依赖索引，杜绝错位）
+            if (taskId > 0) {
+                loadTaskDetailById(taskId, date)
+            } else if (date != null && taskIndex >= 0) {
                 loadTaskDetail(date, taskIndex)
             } else {
                 loadLatestTask()
@@ -62,11 +69,32 @@ class MissionDetailActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 通过任务 ID 加载详情（F14 修复核心）：不依赖列表顺序，天然无错位。
+     * 日期优先取任务实体自身的 date，仅在实体缺失日期时才使用 Intent 传入值。
+     */
+    private suspend fun loadTaskDetailById(taskId: Long, fallbackDate: String?) {
+        val task = repository.getTaskById(taskId) ?: run {
+            Toast.makeText(this@MissionDetailActivity, "任务不存在", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val date = task.date.ifEmpty { fallbackDate ?: "" }
+        if (date.isEmpty()) {
+            Toast.makeText(this@MissionDetailActivity, "任务日期缺失，无法显示详情", Toast.LENGTH_SHORT).show()
+            return
+        }
+        loadTaskDetail(date, task, taskIndex = -1)
+    }
+
     private suspend fun loadTaskDetail(date: String, taskIndex: Int) {
+        val task = repository.getTask(date, taskIndex) ?: return
+        loadTaskDetail(date, task, taskIndex)
+    }
+
+    private fun loadTaskDetail(date: String, task: InspectionTask, taskIndex: Int) {
         currentDate = date
         currentTaskIndex = taskIndex
-
-        val task = repository.getTask(date, taskIndex) ?: return
+        currentTaskId = task.id
 
         updateHeader(task, date)
         updateVideo(task)
@@ -193,11 +221,37 @@ class MissionDetailActivity : AppCompatActivity() {
         }
     }
 
+    /**
+     * 筛选菜单（F14）：历史记录排序方式，选项与设计稿一致。
+     */
+    private fun showFilterMenu() {
+        val options = arrayOf("按优先级排序", "时间倒序（最新优先）", "时间正序（最早优先）")
+        val values = arrayOf("priority", "time-desc", "time-asc")
+        val checkedIndex = values.indexOf(currentFilter).coerceAtLeast(1)
+        var pendingIndex = checkedIndex
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("筛选条件 · 排序方式")
+            .setSingleChoiceItems(options, checkedIndex) { _, which -> pendingIndex = which }
+            .setPositiveButton("确定") { _, _ ->
+                currentFilter = values[pendingIndex]
+                Toast.makeText(this, "已切换：${options[pendingIndex]}", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
     private fun showHistory() {
         val fragment = HistoryBottomSheetFragment()
-        fragment.setOnTaskSelectedListener { date, taskIndex ->
+        fragment.setSortFilter(currentFilter)
+        fragment.setOnTaskSelectedListener { date, taskIndex, taskId ->
             lifecycleScope.launch {
-                loadTaskDetail(date, taskIndex)
+                // F14：优先按 ID 加载，杜绝跨日期索引错位
+                if (taskId > 0) {
+                    loadTaskDetailById(taskId, date)
+                } else {
+                    loadTaskDetail(date, taskIndex)
+                }
             }
         }
         fragment.show(supportFragmentManager, "HistoryBottomSheet")
@@ -216,7 +270,12 @@ class MissionDetailActivity : AppCompatActivity() {
         lifecycleScope.launch {
             android.util.Log.d("PDF_EXPORT", "开始导出PDF")
 
-            val task = repository.getTask(currentDate, currentTaskIndex)
+            // 已按 ID 加载时索引为 -1，必须改用 ID 取任务，否则导出会失败
+            val task = if (currentTaskId > 0) {
+                repository.getTaskById(currentTaskId)
+            } else {
+                repository.getTask(currentDate, currentTaskIndex)
+            }
             if (task == null) {
                 android.util.Log.e("PDF_EXPORT", "任务数据为空")
                 Toast.makeText(this@MissionDetailActivity, "无法获取任务数据", Toast.LENGTH_SHORT).show()

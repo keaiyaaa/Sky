@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.view.WindowManager
 import android.widget.LinearLayout
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
@@ -16,15 +15,22 @@ import kotlinx.coroutines.launch
 class HistoryBottomSheetFragment : DialogFragment() {
 
     private lateinit var repository: InspectionRepository
-    private var taskSelectedListener: ((String, Int) -> Unit)? = null
+    private var taskSelectedListener: ((String, Int, Long) -> Unit)? = null
+    /** 排序方式：priority / time-desc / time-asc，由详情页筛选菜单传入 */
+    private var sortFilter: String = "time-desc"
 
-    fun setOnTaskSelectedListener(listener: (String, Int) -> Unit) {
+    fun setOnTaskSelectedListener(listener: (String, Int, Long) -> Unit) {
         this.taskSelectedListener = listener
+    }
+
+    fun setSortFilter(filter: String) {
+        this.sortFilter = filter
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setStyle(STYLE_NORMAL, R.style.FullScreenDialog)
+        // 右侧抽屉：全屏透明窗口 + 自绘遮罩与滑入动画
+        setStyle(STYLE_NORMAL, R.style.RightDrawerDialog)
     }
 
     override fun onCreateView(
@@ -40,20 +46,43 @@ class HistoryBottomSheetFragment : DialogFragment() {
 
         repository = InspectionRepository(requireContext())
 
-        view.findViewById<android.widget.ImageView>(R.id.iv_close).setOnClickListener { dismiss() }
+        val panel = view.findViewById<View>(R.id.drawer_panel)
+        val scrim = view.findViewById<View>(R.id.drawer_scrim)
+
+        view.findViewById<android.widget.ImageView>(R.id.iv_close)
+            .setOnClickListener { closeDrawer(panel, scrim) }
+        scrim.setOnClickListener { closeDrawer(panel, scrim) }
+
+        // 面板自右侧滑入，遮罩同步淡入（先置位避免首帧闪现）
+        panel.translationX = resources.displayMetrics.widthPixels * 2f / 3f
+        scrim.alpha = 0f
+        panel.post {
+            panel.animate()
+                .translationX(0f)
+                .setDuration(220)
+                .setInterpolator(android.view.animation.DecelerateInterpolator())
+                .start()
+            scrim.animate().alpha(1f).setDuration(220).start()
+        }
 
         renderHistoryList()
     }
 
-    override fun onStart() {
-        super.onStart()
-        val window = dialog?.window
-        val displayMetrics = requireContext().resources.displayMetrics
-        val screenWidth = displayMetrics.widthPixels
-        val screenHeight = displayMetrics.heightPixels
-        val width = (screenWidth * 2 / 3).toInt()
-        window?.setLayout(width, screenHeight)
-        window?.setGravity(android.view.Gravity.END)
+    private var closing = false
+
+    /** 面板滑出后关闭，避免直接 dismiss 时的突兀跳变 */
+    private fun closeDrawer(panel: View, scrim: View) {
+        if (closing) return
+        closing = true
+        panel.animate()
+            .translationX(panel.width.toFloat())
+            .setDuration(180)
+            .start()
+        scrim.animate()
+            .alpha(0f)
+            .setDuration(180)
+            .withEndAction { dismissAllowingStateLoss() }
+            .start()
     }
 
     private fun renderHistoryList() {
@@ -61,7 +90,7 @@ class HistoryBottomSheetFragment : DialogFragment() {
             val historyList = view?.findViewById<LinearLayout>(R.id.history_list) ?: return@launch
             historyList.removeAllViews()
 
-            val dateGroups = repository.sortDateGroups("time-desc")
+            val dateGroups = repository.sortDateGroups(sortFilter)
 
             dateGroups.forEach { group ->
                 val itemView = layoutInflater.inflate(R.layout.item_history_date, null)
@@ -94,8 +123,8 @@ class HistoryBottomSheetFragment : DialogFragment() {
         val savedListener = taskSelectedListener
         dismiss()
         val fragment = DateTasksDialogFragment(group)
-        fragment.setOnTaskSelectedListener { taskIndex ->
-            savedListener?.invoke(group.date, taskIndex)
+        fragment.setOnTaskSelectedListener { taskIndex, taskId ->
+            savedListener?.invoke(group.date, taskIndex, taskId)
         }
         fragment.show(requireActivity().supportFragmentManager, "DateTasksDialog")
     }
