@@ -143,6 +143,8 @@ object PdfReportUtil {
         text("天枢巡检 - 巡检报告", titlePaint)
         val generatedAt = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date())
         text("生成时间：$generatedAt    巡检日期：$date", subtitlePaint)
+        // F16：标注数据来源，便于审阅时区分真实巡检数据与演示数据
+        text("数据来源：App 本地巡检任务记录（SQLite） · 媒体文件：本地缓存", subtitlePaint)
 
         // ── 任务信息 ──────────────────────────────────────────────
         section("任务信息")
@@ -159,6 +161,8 @@ object PdfReportUtil {
 
         // ── AI 智能分析 ───────────────────────────────────────────
         section("AI 智能分析")
+        // F16/F15：标注分析来源，避免演示数据被误认为真实 AI 结论
+        keyValue("分析来源", if (task.analysis.analyzedAt > 0) "真实 AI 分析" else "预置演示数据")
         keyValue("缺陷类型", task.analysis.defectType)
         keyValue("位置", task.analysis.location)
         text("处置建议：${task.analysis.suggestion}", bodyPaint)
@@ -178,6 +182,8 @@ object PdfReportUtil {
         }
 
         y += 10f
+        // F16：页脚再次声明数据来源与生成时间
+        text("数据来源：天枢巡检 App 本地记录 · 生成时间：$generatedAt", subtitlePaint)
         text("— 报告结束 —", subtitlePaint)
 
         pdf.finishPage(page)
