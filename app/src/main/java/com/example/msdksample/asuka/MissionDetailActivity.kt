@@ -185,11 +185,35 @@ class MissionDetailActivity : AppCompatActivity() {
     private fun updateAnalysis(task: InspectionTask) {
         binding.analysisContainer.removeAllViews()
 
-        addAnalysisItem(R.string.defect_type, task.analysis.defectType)
-        addAnalysisItem(R.string.location, task.analysis.location)
-        addAnalysisItem(R.string.suggestion, task.analysis.suggestion)
+        val a = task.analysis
+        // F15：右上角来源标签，区分真实 AI 分析与预置演示数据
+        binding.tvAnalysisSource.text = if (a.analyzedAt > 0) "真实分析" else "演示数据"
 
-        addAiCountItem(task.analysis.aiCount)
+        if (a.analyzedAt > 0) {
+            // 真实 AI 分析结果：TODO 后续接入后展示置信度/tokens/分析时间等元信息
+            addAnalysisItem(R.string.defect_type, a.defectType)
+            addAnalysisItem(R.string.location, a.location)
+            addAnalysisItem(R.string.suggestion, a.suggestion)
+        } else {
+            // 预置/种子数据：F15 明确标注演示来源，避免误认为真实分析结论
+            addAnalysisSourceBanner()
+            addAnalysisItem(R.string.defect_type, a.defectType)
+            addAnalysisItem(R.string.location, a.location)
+            addAnalysisItem(R.string.suggestion, a.suggestion)
+            addAiCountItem(a.aiCount)
+        }
+    }
+
+    /** F15：在分析结果顶部插入演示来源提示横幅 */
+    private fun addAnalysisSourceBanner() {
+        val banner = android.widget.TextView(this).apply {
+            text = "以下为预置演示数据，非真实 AI 分析结果。"
+            textSize = 10f
+            setTextColor(resources.getColor(R.color.text_hint, null))
+            setBackgroundColor(resources.getColor(R.color.bg_page, null))
+            setPadding(24, 16, 24, 16)
+        }
+        binding.analysisContainer.addView(banner)
     }
 
     private fun addAnalysisItem(titleRes: Int, content: String) {

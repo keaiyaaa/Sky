@@ -155,7 +155,12 @@ class DatabaseDataSource(context: Context) {
                         defectType = it.defectType,
                         location = it.location,
                         suggestion = it.suggestion,
-                        aiCount = it.aiCount
+                        aiCount = it.aiCount,
+                        confidence = it.confidence,
+                        tokenCost = it.tokenCost,
+                        totalTokens = it.totalTokens,
+                        analysisType = it.analysisType,
+                        analyzedAt = it.analyzedAt
                     )
                 } ?: AnalysisInfo("", "", "", "")
             )
@@ -198,7 +203,12 @@ class DatabaseDataSource(context: Context) {
             defectType = analysis.defectType,
             location = analysis.location,
             suggestion = analysis.suggestion,
-            aiCount = analysis.aiCount
+            aiCount = analysis.aiCount,
+            confidence = analysis.confidence,
+            tokenCost = analysis.tokenCost,
+            totalTokens = analysis.totalTokens,
+            analysisType = analysis.analysisType,
+            analyzedAt = analysis.analyzedAt
         )
     }
 

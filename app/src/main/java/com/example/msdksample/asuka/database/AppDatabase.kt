@@ -11,7 +11,7 @@ import com.example.msdksample.asuka.database.entities.AnalysisEntity
 
 @Database(
     entities = [TaskEntity::class, AnalysisEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
