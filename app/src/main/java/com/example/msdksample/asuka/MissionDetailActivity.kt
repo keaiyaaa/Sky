@@ -241,11 +241,7 @@ class MissionDetailActivity : AppCompatActivity() {
 
     // ==================== 工单（F17） ====================
 
-    /**
-     * 刷新工单入口按钮：
-     * 无本地任务 ID 时禁用并显示"创建维修工单"；
-     * 已有工单时显示"查看工单（N）"，否则显示"创建维修工单"。
-     */
+    /** 刷新"创建维修工单"按钮：显示当前任务已有工单数，无 ID 时禁用 */
     private fun updateCreateOrderButton() {
         if (currentTaskId <= 0) {
             binding.btnCreateOrder.isEnabled = false
@@ -257,7 +253,7 @@ class MissionDetailActivity : AppCompatActivity() {
         binding.btnCreateOrder.alpha = 1f
         lifecycleScope.launch {
             val count = repository.countWorkOrdersByTask(currentTaskId)
-            binding.btnCreateOrder.text = if (count > 0) "查看工单（$count）" else "创建维修工单"
+            binding.btnCreateOrder.text = if (count > 0) "创建维修工单（已有 $count）" else "创建维修工单"
         }
     }
 
