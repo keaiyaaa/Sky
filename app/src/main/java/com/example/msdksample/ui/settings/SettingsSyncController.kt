@@ -32,6 +32,7 @@ class SettingsSyncController(
             values.mapNotNull { it.field.validate(it.value) }.joinToString("\n")
         }
         val state = provider.currentSnapshot()
+        val eventOwner=com.example.msdksample.data.remote.AccountIdentity.owner(appContext)
         val generation = state.generation
         val request = ++requestId
         val deviceValues = values.filter { !it.field.cloudOnly && it.value != null }
@@ -52,7 +53,7 @@ class SettingsSyncController(
             }
             val details = values.joinToString("\n") { item ->
                 val result = when {
-                    item.field.cloudOnly -> "仅保存本机，云端未接入"
+                    item.field.cloudOnly -> "仅保存本机，账户保存请单独操作；巡查记录自动上传尚未接入"
                     item.value == null -> "未设置，未下发"
                     finalReplies[item.field.column] != null -> "未确认（${finalReplies[item.field.column]}）"
                     else -> "演示确认=${item.display}，未做设备读回"
@@ -61,7 +62,8 @@ class SettingsSyncController(
             }
             runCatching { LocalDataStore.getInstance(appContext).record("设置", "保存并同步设置",
                 if (rejection != null || deviceValues.isEmpty()) "未同步" else if (failures == 0) "演示成功" else "失败",
-                if (demo) "本地演示" else "设备连接", "$title\n$details") }
+                if (demo) "本地演示" else "设备连接", "$title\n$details", owner=eventOwner,
+                sourceCode=when(state.mode) { DeviceMode.LOCAL_DEMO -> "LOCAL_SIMULATION"; DeviceMode.DJI_SIMULATOR -> "DJI_SIMULATOR"; DeviceMode.DEVICE -> "DEVICE"; else -> "UNKNOWN" }) }
                 .onFailure { Log.e("SettingsSync", "保存同步日志失败", it) }
             onChanged?.invoke("$title\n$details", false)
         }

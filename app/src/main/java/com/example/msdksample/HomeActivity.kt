@@ -150,7 +150,8 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
                 startActivity(Intent(this, ProfileActivity::class.java))
             }
             R.id.nav_about -> startActivity(Intent(this, AboutActivity::class.java))
-            R.id.nav_logout -> if (PreferenceManager.getInstance(this).isLoggedIn()) showLogoutDialog()
+            R.id.nav_logout -> if (PreferenceManager.getInstance(this).isLoggedIn() ||
+                com.example.msdksample.data.remote.BackendSessions.registry.current() != null) showLogoutDialog()
                 else startActivity(Intent(this, LoginActivity::class.java))
         }
         binding.drawerLayout.closeDrawers()
@@ -300,13 +301,14 @@ class HomeActivity : BaseActivity<ActivityHomeBinding>(), NavigationView.OnNavig
 
     private fun refreshProfileHeader() {
         val prefs = PreferenceManager.getInstance(this)
+        val cloudSession = com.example.msdksample.data.remote.BackendSessions.registry.current()
         val profile = LocalDataStore.getInstance(this).profile(localProfileOwner(this))
         val header = binding.navView.getHeaderView(0)
         header.findViewById<android.widget.TextView>(R.id.tv_username).text = profile?.nickname
-            ?: if (prefs.isLoggedIn()) prefs.getUsername() else "未登录"
+            ?: cloudSession?.username ?: if (prefs.isLoggedIn()) prefs.getUsername() else "未登录"
         header.findViewById<android.widget.TextView>(R.id.tv_user_phone).text =
-            if (prefs.isLoggedIn()) maskedPhone(prefs.getUserPhone()) else "本机演示资料"
-        binding.navView.menu.findItem(R.id.nav_logout).title = if (prefs.isLoggedIn()) "退出登录" else "登录"
+            if (cloudSession != null) "云端账户" else if (prefs.isLoggedIn()) maskedPhone(prefs.getUserPhone()) else "本机演示资料"
+        binding.navView.menu.findItem(R.id.nav_logout).title = if (cloudSession != null || prefs.isLoggedIn()) "退出登录" else "登录"
     }
 
     override fun onDestroy() {

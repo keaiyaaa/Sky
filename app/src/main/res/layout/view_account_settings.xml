@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="vertical" android:paddingBottom="24dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="账户设置" android:textStyle="bold" android:textSize="16sp" android:textColor="@color/gray_800" />
+    <TextView android:id="@+id/tv_account_settings_status" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:paddingTop="8dp" android:paddingBottom="8dp"
+        android:text="账户保存与设备参数应用分别确认。" android:textSize="13sp" android:textColor="@color/gray_700" />
+    <Button android:id="@+id/btn_account_settings_read" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:minHeight="48dp" android:text="读取账户设置" />
+    <Button android:id="@+id/btn_account_settings_save" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:minHeight="48dp" android:text="保存到账户" />
+    <Button android:id="@+id/btn_account_settings_retry" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:minHeight="48dp" android:text="重试待确认保存" />
+    <Button android:id="@+id/btn_account_settings_discard" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:minHeight="48dp" android:text="放弃待确认保存" />
+    <Button android:id="@+id/btn_account_settings_import" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:minHeight="48dp" android:text="导入旧本机草稿" />
+</LinearLayout>

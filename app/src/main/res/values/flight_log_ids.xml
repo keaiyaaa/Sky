@@ -1,0 +1,8 @@
+<resources>
+    <item type="id" name="log_scope" />
+    <item type="id" name="log_source" />
+    <item type="id" name="log_category" />
+    <item type="id" name="log_from" />
+    <item type="id" name="log_to" />
+    <item type="id" name="log_summary" />
+</resources>

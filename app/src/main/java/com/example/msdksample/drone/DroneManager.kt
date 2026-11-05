@@ -274,10 +274,17 @@ class DroneManager private constructor() {
     }
 
     private fun recordEvent(action: String, result: String, detail: String = "",
-                            source: String = if (simulatorActive) "本地演示" else "设备连接") {
+                            source: String = if (simulatorActive) "本地演示" else "设备连接",
+                            owner: String? = null, observedSource: String? = null) {
         val context = appContext ?: return
+        val code=observedSource ?: when {
+            source=="本地演示" || action.contains("演示") -> "LOCAL_SIMULATION"
+            contractState.currentSnapshot().mode==DeviceMode.DJI_SIMULATOR -> "DJI_SIMULATOR"
+            contractState.currentSnapshot().mode==DeviceMode.DEVICE -> "DEVICE"
+            else -> "UNKNOWN"
+        }
         runCatching { LocalDataStore.getInstance(context).record("连接", action, result,
-            source, detail) }
+            source, detail, owner=owner ?: com.example.msdksample.data.remote.AccountIdentity.owner(context), sourceCode=code) }
             .onFailure { Log.e(TAG, "保存连接日志失败", it) }
     }
 
@@ -349,6 +356,7 @@ class DroneManager private constructor() {
     private val connectPolling = AtomicBoolean(false)
     private var connectPollTimes = 0
     private var pendingConnectCallback: ((Boolean, String?) -> Unit)? = null
+    private var pendingConnectLogOwner: String? = null
 
     private val connectPollRunnable = object : Runnable {
         override fun run() {
@@ -360,12 +368,13 @@ class DroneManager private constructor() {
                 return
             }
             if (connectPollTimes++ >= CONNECT_WAIT_LIMIT) {
+                val logOwner=pendingConnectLogOwner
                 val cb = pendingConnectCallback
                 pendingConnectCallback = null
                 connectPolling.set(false)
                 connectionError = "等待超时，未检测到无人机，请检查设备供电和连接方式"
                 notifyConnectionChanged(false, null)
-                recordEvent("等待连接", "失败", connectionError.orEmpty())
+                recordEvent("等待连接", "失败", connectionError.orEmpty(), owner=logOwner)
                 cb?.invoke(
                     false,
                     "等待超时，未检测到无人机。\n请确认遥控器/无人机已通电，" +
@@ -715,6 +724,7 @@ class DroneManager private constructor() {
             return
         }
         if (connectPolling.compareAndSet(false, true)) {
+            pendingConnectLogOwner=appContext?.let { com.example.msdksample.data.remote.AccountIdentity.owner(it) }
             connectionError = null
             connectPollTimes = 0
             pendingConnectCallback = onResult
@@ -750,6 +760,7 @@ class DroneManager private constructor() {
     // ============================================================
 
     private fun handleProductConnected(pid: Int) {
+        val logOwner=if(pendingConnectCallback!=null) pendingConnectLogOwner else appContext?.let { com.example.msdksample.data.remote.AccountIdentity.owner(it) }
         val newSession = !connected || productId != pid
         connected = true
         if (newSession) { lastDevice = null; djiSimulatorState = null }
@@ -762,12 +773,13 @@ class DroneManager private constructor() {
         pendingConnectCallback = null
         callback?.invoke(true, "无人机已连接")
         notifyConnectionChanged(isConnected(), getConnectedDevice())
-        recordEvent("设备连接", "成功", "productId=$pid", "设备连接")
+        recordEvent("设备连接", "成功", "productId=$pid", "设备连接",owner=logOwner,observedSource="DEVICE")
         refreshDeviceInfo()
     }
 
     private fun handleProductDisconnected(pid: Int) {
         if (productId != pid) return
+        val logOwner=if(pendingConnectCallback!=null) pendingConnectLogOwner else appContext?.let { com.example.msdksample.data.remote.AccountIdentity.owner(it) }
         connected = false
         djiSimulatorState = null
         productId = -1
@@ -780,7 +792,7 @@ class DroneManager private constructor() {
         pendingConnectCallback = null
         callback?.invoke(false, "等待期间设备已断开")
         notifyConnectionChanged(isConnected(), getConnectedDevice())
-        recordEvent("设备断开", "成功", source = "设备连接")
+        recordEvent("设备断开", "成功", source = "设备连接",owner=logOwner,observedSource="DEVICE")
     }
 
     fun cancelConnectionWait() {

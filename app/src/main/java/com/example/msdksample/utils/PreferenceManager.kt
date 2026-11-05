@@ -108,6 +108,7 @@ class PreferenceManager private constructor(context: Context) {
 
     // 退出登录
     fun logout() {
+        com.example.msdksample.data.remote.BackendSessions.registry.clear()
         prefs.edit()
             .putBoolean(KEY_IS_LOGGED_IN, false)
             .putBoolean(KEY_AUTO_LOGIN, false)

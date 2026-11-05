@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Fill only with the verified HTTPS environment; an example host is not a working service. -->
+    <string name="backend_api_base_url" translatable="false"></string>
+</resources>

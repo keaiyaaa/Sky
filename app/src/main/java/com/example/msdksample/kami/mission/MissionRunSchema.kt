@@ -35,6 +35,14 @@ object MissionRunSchema {
             sequence INTEGER NOT NULL, state TEXT NOT NULL, message TEXT NOT NULL, occurred_at INTEGER NOT NULL,
             PRIMARY KEY(run_id, sequence)
         )""")
+        createLogOwnership(db)
+    }
+
+    /** F21 only: ownership of the log projection, preserved in the same database transaction. */
+    fun createLogOwnership(db: SQLiteDatabase) {
+        db.execSQL("CREATE TABLE IF NOT EXISTS mission_run_log_owners(run_id TEXT PRIMARY KEY REFERENCES mission_runs(id) ON DELETE CASCADE,owner TEXT NOT NULL)")
+        db.execSQL("INSERT OR IGNORE INTO mission_run_log_owners(run_id,owner) SELECT id,'legacy-unassigned' FROM mission_runs")
+        db.execSQL("CREATE INDEX IF NOT EXISTS mission_log_owner ON mission_run_log_owners(owner,run_id)")
     }
 
     /**

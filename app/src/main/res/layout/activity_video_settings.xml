@@ -386,7 +386,7 @@
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
                                 android:layout_marginTop="4dp"
-                                android:text="1080P@60fps 视频和4800万像素照片会消耗大量网络流量，建议在WiFi环境下使用"
+                                android:text="当前仅开放1080p视频与high图片选项。具体帧率、照片像素和设备支持能力以兼容机型验证结果为准。"
                                 android:textSize="9sp"
                                 android:textColor="@color/gray_600" />
                     </LinearLayout>
@@ -412,6 +412,7 @@
                     android:background="@drawable/bg_primary_rounded"
                     android:textColor="@color/white" />
 
+            <include layout="@layout/view_account_settings" />
         </LinearLayout>
     </ScrollView>
 

@@ -25,6 +25,27 @@ public class ApiExceptionHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApiExceptionHandler.class);
 
+    @ExceptionHandler(ApiFailure.class)
+    public ResponseEntity<ApiError> handleApiFailure(ApiFailure exception,
+            HttpServletRequest request, HttpServletResponse response) {
+        return error(exception.status(), exception.code(), exception.getMessage(),
+                exception.fieldErrors(), request, response);
+    }
+
+    @ExceptionHandler(org.springframework.dao.DataAccessException.class)
+    public ResponseEntity<ApiError> handleDatabaseFailure(HttpServletRequest request, HttpServletResponse response) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, "SERVICE_UNAVAILABLE", "数据服务暂不可用",
+                List.of(), request, response);
+    }
+
+    @ExceptionHandler({org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class,
+            org.springframework.web.bind.MissingServletRequestParameterException.class,
+            org.springframework.web.method.annotation.HandlerMethodValidationException.class})
+    public ResponseEntity<ApiError> handleInvalidParameter(HttpServletRequest request, HttpServletResponse response) {
+        return error(HttpStatus.BAD_REQUEST, ApiErrorCodes.VALIDATION_FAILED, "请求参数无效",
+                List.of(), request, response);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiError> handleMethodArgumentNotValid(
             MethodArgumentNotValidException exception,

@@ -80,15 +80,6 @@ class PengNavigationInstrumentedTest {
     }
 
     private fun clickSaveByScrolling() {
-        repeat(12) {
-            try {
-                onView(withId(R.id.btn_save)).check(matches(isCompletelyDisplayed()))
-                onView(withId(R.id.btn_save)).perform(click())
-                return
-            } catch (_: AssertionError) {
-                onView(isAssignableFrom(android.widget.ScrollView::class.java)).perform(swipeUp())
-            }
-        }
-        onView(withId(R.id.btn_save)).check(matches(isCompletelyDisplayed()))
+        onView(withId(R.id.btn_save)).perform(scrollTo(), click())
     }
 }

@@ -69,8 +69,7 @@ abstract class LocalToolsActivity : BaseActivity<ActivityLocalToolsBinding>() {
 }
 
 fun localProfileOwner(context: Context): String {
-    val prefs = PreferenceManager.getInstance(context)
-    return if (prefs.isLoggedIn() && prefs.getUserPhone().isNotBlank()) "phone:${prefs.getUserPhone()}" else "guest"
+    return com.example.msdksample.data.remote.AccountIdentity.owner(context)
 }
 
 fun maskedPhone(value: String): String = if (value.length == 11) value.take(3) + "****" + value.takeLast(4) else value

@@ -61,6 +61,19 @@ class Aerial_photography : AppCompatActivity() {
 
     private var isVideoRecording = false
     private val simulatedFlight = SimulatedFlightCommandExecutor()
+    private fun executeSimulatedFlight(action: BasicFlightAction): String {
+        val owner=com.example.msdksample.data.remote.AccountIdentity.owner(applicationContext)
+        val result=simulatedFlight.executeResult(action)
+        val label=when(action) {
+            BasicFlightAction.TAKEOFF -> "模拟起飞"; BasicFlightAction.LAND -> "模拟降落"
+            BasicFlightAction.RETURN_HOME -> "模拟返航"; BasicFlightAction.HOVER -> "模拟悬停"
+        }
+        runCatching { com.example.msdksample.data.local.LocalDataStore.getInstance(applicationContext)
+            .record("指令",label,if(result.accepted) "模拟完成" else "已拒绝","本地演示",result.message,
+                owner=owner,sourceCode="LOCAL_SIMULATION") }
+            .onFailure { android.util.Log.w("F21","保存模拟指令日志失败") }
+        return result.message
+    }
     private val cameraController = CameraOperationController(DjiCameraGateway())
 
     /** 演示视频文件名：需把 test.mp4 放到 App 专属外部目录（见 initDemoVideoIfPresent） */
@@ -847,11 +860,11 @@ class Aerial_photography : AppCompatActivity() {
     private fun executeLocalCommand(matched: String) {
         hideQuickCommandDialog()
         when (matched) {
-            "返航" -> showToast(simulatedFlight.execute(BasicFlightAction.RETURN_HOME))
-            "悬停" -> showToast(simulatedFlight.execute(BasicFlightAction.HOVER))
+            "返航" -> showToast(executeSimulatedFlight(BasicFlightAction.RETURN_HOME))
+            "悬停" -> showToast(executeSimulatedFlight(BasicFlightAction.HOVER))
             "拍照" -> captureDronePhoto()
-            "起飞" -> showToast(simulatedFlight.execute(BasicFlightAction.TAKEOFF))
-            "降落" -> showToast(simulatedFlight.execute(BasicFlightAction.LAND))
+            "起飞" -> showToast(executeSimulatedFlight(BasicFlightAction.TAKEOFF))
+            "降落" -> showToast(executeSimulatedFlight(BasicFlightAction.LAND))
             "录像" -> startVideoRecording()
             "停止录像" -> stopVideoRecording()
             else -> showToast("执行指令: $matched")
@@ -903,10 +916,10 @@ class Aerial_photography : AppCompatActivity() {
         Log.d("FlightIntent", "执行飞行: type=${intent.flightType}, params=${intent.parameters}")
 
         when (intent.flightType) {
-            "takeoff" -> showToast(simulatedFlight.execute(BasicFlightAction.TAKEOFF))
-            "land" -> showToast(simulatedFlight.execute(BasicFlightAction.LAND))
-            "return_home" -> showToast(simulatedFlight.execute(BasicFlightAction.RETURN_HOME))
-            "hover" -> showToast("${simulatedFlight.execute(BasicFlightAction.HOVER)}（${intent.parameters.duration ?: 5} 秒仅为演示）")
+            "takeoff" -> showToast(executeSimulatedFlight(BasicFlightAction.TAKEOFF))
+            "land" -> showToast(executeSimulatedFlight(BasicFlightAction.LAND))
+            "return_home" -> showToast(executeSimulatedFlight(BasicFlightAction.RETURN_HOME))
+            "hover" -> showToast("${executeSimulatedFlight(BasicFlightAction.HOVER)}（${intent.parameters.duration ?: 5} 秒仅为演示）")
             "photo" -> {
                 val count = intent.parameters.count ?: 1
                 showToast("拍摄 ${count} 张照片")

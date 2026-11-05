@@ -474,6 +474,7 @@
                     android:background="@drawable/bg_primary_rounded"
                     android:textColor="@color/white" />
 
+            <include layout="@layout/view_account_settings" />
         </LinearLayout>
     </ScrollView>
 

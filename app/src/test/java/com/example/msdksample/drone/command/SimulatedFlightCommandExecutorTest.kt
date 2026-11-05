@@ -4,6 +4,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class SimulatedFlightCommandExecutorTest {
+    @Test fun logStatusUsesStructuredResultRatherThanParsingDisplayText() {
+        val executor=SimulatedFlightCommandExecutor()
+        org.junit.Assert.assertFalse(executor.executeResult(BasicFlightAction.LAND).accepted)
+        org.junit.Assert.assertTrue(executor.executeResult(BasicFlightAction.TAKEOFF).accepted)
+        org.junit.Assert.assertFalse(executor.executeResult(BasicFlightAction.TAKEOFF).accepted)
+        assertEquals(SimulatedAircraftState.AIRBORNE,executor.state)
+    }
     @Test fun rejectsAirborneCommandsOnGround() {
         val executor = SimulatedFlightCommandExecutor()
         assertEquals("模拟拒绝：飞机未处于空中", executor.execute(BasicFlightAction.HOVER))

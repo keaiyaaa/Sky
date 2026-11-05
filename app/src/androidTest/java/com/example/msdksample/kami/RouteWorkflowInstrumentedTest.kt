@@ -3,6 +3,7 @@ package com.example.msdksample.kami
 import android.content.Context
 import androidx.test.core.app.ActivityScenario
 import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.Espresso.onData
 import androidx.test.espresso.NoMatchingViewException
 import androidx.test.espresso.action.ViewActions.*
 import androidx.test.espresso.assertion.ViewAssertions.matches
@@ -19,6 +20,7 @@ import com.mapbox.mapboxsdk.geometry.LatLng
 import java.util.concurrent.atomic.AtomicReference
 import com.example.msdksample.ui.logs.FlightLogActivity
 import org.hamcrest.Matchers.allOf
+import org.hamcrest.Matchers.equalTo
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -132,7 +134,7 @@ class RouteWorkflowInstrumentedTest {
     private fun startScenario(scenario: String) {
         eventually { onView(withId(R.id.btnAction)).check(matches(isEnabled())) }
         onView(withId(R.id.btnAction)).perform(scrollTo(), click())
-        onView(withText(scenario)).perform(click())
+        onData(equalTo(scenario)).perform(click())
         onView(withText("开始模拟")).perform(click())
     }
 

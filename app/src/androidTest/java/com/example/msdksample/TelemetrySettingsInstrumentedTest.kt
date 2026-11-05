@@ -109,7 +109,7 @@ class TelemetrySettingsInstrumentedTest {
         store.connection(DeviceMode.LOCAL_DEMO, SdkRegistrationState.NOT_INITIALIZED, LinkState.CONNECTED, null)
         instrumentation.runOnMainSync {
             val sync = SettingsSyncController(context, onChanged = { text, busy ->
-                if (!busy) assertTrue(text.contains("云端未接入"))
+                if (!busy) assertTrue(text.contains("账户保存请单独操作"))
             }, provider = store, apply = { _, _, _ -> applyCalls.incrementAndGet() })
             sync.start(listOf(SettingValue(SettingField.AUTO_SYNC_RECORDS, "1")))
             sync.detach()

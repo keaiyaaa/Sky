@@ -11,13 +11,13 @@ import com.example.msdksample.settings.*
 import java.math.BigDecimal
 
 class FlightSettingsActivity : BaseActivity<ActivityFlightSettingsBinding>() {
-    private lateinit var preferences: UserSettingsPreferences
+    private lateinit var preferences: ScopedUserSettingsStore
     private lateinit var sync: SettingsSyncController
     private var needsSensitivityReview = false
     override fun getViewBinding() = ActivityFlightSettingsBinding.inflate(layoutInflater)
 
     override fun initViews() {
-        preferences = UserSettingsPreferences(this)
+        preferences = ScopedUserSettingsStore(this)
         sync = SettingsSyncController(this, onChanged = { text, busy ->
             binding.tvSyncStatus.text = text
             binding.btnSave.isEnabled = !busy
@@ -62,6 +62,11 @@ class FlightSettingsActivity : BaseActivity<ActivityFlightSettingsBinding>() {
             }
         }
         binding.btnSave.setOnClickListener { saveSettings() }
+        AccountSettingsController(this, preferences,
+            draftStamp = { listOf(binding.etReturnAltitude.text.toString(), binding.rgFailsafe.checkedRadioButtonId,
+                binding.rgObstacle.checkedRadioButtonId, binding.switchBeginner.isChecked,
+                binding.sbSensitivity.progress, binding.cbSensitivityConfirm.isChecked).toString() },
+            saveDraft = { persistDraft() }, reloadDraft = { loadSettings() })
     }
 
     private fun loadSettings() {
@@ -92,38 +97,49 @@ class FlightSettingsActivity : BaseActivity<ActivityFlightSettingsBinding>() {
         binding.tvSensitivityValue.text = "${binding.sbSensitivity.progress + 1} 档（1–10）"
     }
 
-    private fun saveSettings() {
+    private fun persistDraft(): UserSettings {
+        preferences.requireCurrentOwner()
         val heightText = binding.etReturnAltitude.text.toString().trim()
         val height = if (heightText.isBlank()) null else heightText.toBigDecimalOrNull()
         if (heightText.isNotBlank() && (height == null || SettingField.RETURN_ALTITUDE.validate(heightText) != null)) {
             binding.etReturnAltitude.error = "请输入20–400米，最多两位小数；留空表示未设置"
             binding.tvSyncStatus.text = "本地未保存：请修正返航高度，未尝试同步。"
-            binding.etReturnAltitude.requestFocus(); return
+            binding.etReturnAltitude.requestFocus()
+            error("请修正返航高度，尚未保存")
         }
         if (needsSensitivityReview && !binding.cbSensitivityConfirm.isChecked) {
             binding.tvSyncStatus.text = "旧灵敏度百分比已备份，请重新选择或确认1–10档后保存。"
-            return
+            error("旧灵敏度百分比已备份，请重新选择或确认1–10档后保存。")
         }
+        val current = preferences.load().settings
+        val updated = current.copy(return_altitude_m = height,
+            failsafe_action = when (binding.rgFailsafe.checkedRadioButtonId) {
+                R.id.rb_failsafe_rth -> "0"; R.id.rb_failsafe_hover -> "1"; R.id.rb_failsafe_land -> "2"; else -> ""
+            }, obstacle_action = when (binding.rgObstacle.checkedRadioButtonId) {
+                R.id.rb_obstacle_bypass -> "0"; R.id.rb_obstacle_brake -> "1"; else -> ""
+            }, beginner_mode = if (binding.switchBeginner.isChecked) "1" else "0",
+            control_sensitivity = binding.sbSensitivity.progress + 1)
+        require(updated.validationErrors().isEmpty()) { updated.validationErrors().joinToString("\n") }
+        preferences.save(updated, sensitivityReviewed = true)
+        needsSensitivityReview = false
+        binding.cbSensitivityConfirm.visibility = View.GONE
+        binding.tvSettingsMigration.text = "旧设置备份仍保留；当前使用数据库v2字段。"
+        return updated.normalized()
+    }
+
+    private fun saveSettings() {
         var localSaved = false
         runCatching {
-            val current = preferences.load().settings
-            val updated = current.copy(return_altitude_m = height,
-                failsafe_action = when (binding.rgFailsafe.checkedRadioButtonId) {
-                    R.id.rb_failsafe_rth -> "0"; R.id.rb_failsafe_hover -> "1"; R.id.rb_failsafe_land -> "2"; else -> ""
-                }, obstacle_action = when (binding.rgObstacle.checkedRadioButtonId) {
-                    R.id.rb_obstacle_bypass -> "0"; R.id.rb_obstacle_brake -> "1"; else -> ""
-                }, beginner_mode = if (binding.switchBeginner.isChecked) "1" else "0",
-                control_sensitivity = binding.sbSensitivity.progress + 1)
-            require(updated.validationErrors().isEmpty()) { updated.validationErrors().joinToString("\n") }
-            preferences.save(updated, sensitivityReviewed = true)
+            val updated = persistDraft()
             localSaved = true
-            needsSensitivityReview = false
-            binding.cbSensitivityConfirm.visibility = View.GONE
-            binding.tvSettingsMigration.text = "旧设置备份仍保留；当前使用数据库v2字段。"
             sync.start(updated.normalized().values().filter { it.field in setOf(SettingField.RETURN_ALTITUDE,
                 SettingField.FAILSAFE, SettingField.BEGINNER, SettingField.OBSTACLE, SettingField.SENSITIVITY) })
         }.onFailure { binding.tvSyncStatus.text = if (localSaved) "本地已保存 · 同步未完成：${it.message}" else "本地未保存：${it.message}" }
     }
 
+    override fun onStart() {
+        super.onStart()
+        if (::preferences.isInitialized && !preferences.isCurrentOwner()) finish()
+    }
     override fun onDestroy() { sync.detach(); super.onDestroy() }
 }

@@ -51,6 +51,16 @@ class UserSettingsPreferences(
         check(editor.commit()) { "本地设置保存失败，未尝试同步" }
     }
 
+    /** Explicit local import; retains review metadata and never copies a credential or uploads. */
+    @Synchronized fun importDraft(draft: SettingsLoadResult) {
+        load()
+        require(draft.settings.validationErrors().isEmpty()) { draft.settings.validationErrors().joinToString("\n") }
+        val editor = storage.edit().putBoolean("sensitivity_needs_review", draft.sensitivityNeedsReview)
+            .putString("migration_notes", draft.notes.joinToString("\n"))
+        write(editor, draft.settings.normalized())
+        check(editor.commit()) { "导入本机草稿失败" }
+    }
+
     private fun write(editor: SharedPreferences.Editor, settings: UserSettings) {
         settings.values().forEach { item ->
             if (item.field == SettingField.SENSITIVITY) editor.putInt(item.field.column, settings.control_sensitivity)

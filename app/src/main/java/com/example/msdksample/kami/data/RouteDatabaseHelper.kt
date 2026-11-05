@@ -70,13 +70,14 @@ class RouteDatabaseHelper(context: Context) : SQLiteOpenHelper(
      * @return {Unit} 不支持的迁移明确失败，禁止通过删表掩盖数据丢失。
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        check(oldVersion == 1 && newVersion == 2) { "不支持的航线数据库迁移：$oldVersion → $newVersion" }
-        MissionRunSchema.create(db)
+        check(oldVersion in 1..2 && newVersion == 3) { "不支持的航线数据库迁移：$oldVersion → $newVersion" }
+        if(oldVersion<2) MissionRunSchema.create(db)
+        MissionRunSchema.createLogOwnership(db)
     }
 
     companion object {
         private const val DATABASE_NAME = "route_planning.db"
-        private const val DATABASE_VERSION = 2
+        private const val DATABASE_VERSION = 3
 
         const val TABLE_ROUTES = "routes"
         const val TABLE_WAYPOINTS = "waypoints"

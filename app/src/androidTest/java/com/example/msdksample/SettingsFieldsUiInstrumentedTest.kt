@@ -68,7 +68,7 @@ class SettingsFieldsUiInstrumentedTest {
                 onView(withId(R.id.rb_video_hd)).check(matches(withText("1080p")))
                 onView(withId(R.id.switch_auto_sync)).perform(scrollTo(), click())
                 clickSaveByScrolling()
-                onView(withId(R.id.tv_sync_status)).check(matches(withText(containsString("云端未接入"))))
+                onView(withId(R.id.tv_sync_status)).check(matches(withText(containsString("账户保存请单独操作"))))
                 assertEquals("0", preferences.load().settings.auto_sync_records)
                 assertEquals("1080p", current.getString("video_quality", null))
                 assertEquals("high", current.getString("image_quality", null))
@@ -90,15 +90,6 @@ class SettingsFieldsUiInstrumentedTest {
     }
 
     private fun clickSaveByScrolling() {
-        repeat(15) {
-            try {
-                onView(withId(R.id.btn_save)).check(matches(isCompletelyDisplayed()))
-                onView(withId(R.id.btn_save)).perform(click())
-                return
-            } catch (_: AssertionError) {
-                onView(isAssignableFrom(android.widget.ScrollView::class.java)).perform(swipeUp())
-            }
-        }
-        onView(withId(R.id.btn_save)).check(matches(isCompletelyDisplayed()))
+        onView(withId(R.id.btn_save)).perform(scrollTo(), click())
     }
 }

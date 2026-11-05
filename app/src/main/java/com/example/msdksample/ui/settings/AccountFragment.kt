@@ -56,14 +56,15 @@ class AccountFragment : Fragment() {
     private fun refreshLoginState() {
         val prefs = PreferenceManager.getInstance(requireContext())
 
-        if (prefs.isLoggedIn()) {
+        val cloudSession = com.example.msdksample.data.remote.BackendSessions.registry.current()
+        if (cloudSession != null || prefs.isLoggedIn()) {
             binding.tvUsername.text = LocalDataStore.getInstance(requireContext())
-                .profile(localProfileOwner(requireContext()))?.nickname ?: prefs.getUsername()
-            binding.tvPhone.text = maskPhone(prefs.getUserPhone())
+                .profile(localProfileOwner(requireContext()))?.nickname ?: cloudSession?.username ?: prefs.getUsername()
+            binding.tvPhone.text = if (cloudSession != null) "云端账户" else maskPhone(prefs.getUserPhone())
             binding.btnEditProfile.text = getString(R.string.logout)
             binding.btnEditProfile.setOnClickListener {
                 prefs.logout()
-                Toast.makeText(requireContext(), "已退出登录", Toast.LENGTH_SHORT).show()
+                Toast.makeText(requireContext(), "已清除本机登录状态", Toast.LENGTH_SHORT).show()
                 refreshLoginState()
             }
         } else {

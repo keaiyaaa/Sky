@@ -10,12 +10,15 @@ import com.example.msdksample.kami.model.Waypoint
 import java.io.Closeable
 import java.util.UUID
 import com.example.msdksample.data.local.FlightLogEntry
+import com.example.msdksample.data.remote.AccountIdentity
+import com.example.msdksample.data.logs.FlightLogPolicy
 
 /**
  * 使用正式航线数据库持久化模拟执行快照、进度和事件，不创建演示种子数据。
  * @param {Context} context 仅持有 applicationContext，避免泄漏页面。
  */
 class MissionRunRepository(context: Context) : Closeable {
+    private val appContext=context.applicationContext
     private val helper = RouteDatabaseHelper(context.applicationContext)
 
     /**
@@ -25,6 +28,7 @@ class MissionRunRepository(context: Context) : Closeable {
      * @return {MissionRun} 已提交到 SQLite 的准备中任务；非法输入或并发任务会抛出异常。
      */
     fun create(routeId: String, scenario: MissionScenario): MissionRun {
+        val logOwner=AccountIdentity.owner(appContext)
         val db = helper.writableDatabase
         db.beginTransaction()
         try {
@@ -38,6 +42,7 @@ class MissionRunRepository(context: Context) : Closeable {
                 MissionRunState.PREPARING, scenario, mission.waypoints.size, 0,
                 first.latitude, first.longitude, first.altitude, "本地模拟准备中；未向飞机发送指令", now, now, 0, 0)
             db.insertOrThrow("mission_runs", null, values(run))
+            db.insertOrThrow("mission_run_log_owners",null,ContentValues().apply { put("run_id",run.id); put("owner",logOwner) })
             mission.waypoints.forEachIndexed { index, point ->
                 db.insertOrThrow("mission_run_waypoints", null, ContentValues().apply {
                     put("run_id", run.id); put("sequence", index + 1); put("waypoint_id", point.id)
@@ -115,32 +120,41 @@ class MissionRunRepository(context: Context) : Closeable {
      * @param {Int} limit 返回条数上限，范围 1 至 1000。
      * @return {List<FlightLogEntry>} 已提交的执行事件，按时间倒序排列。
      */
-    fun logs(keyword: String = "", source: String? = null, limit: Int = 200): List<FlightLogEntry> {
-        require(limit in 1..1000) { "日志查询条数无效" }
+    fun logs(keyword: String = "", source: String? = null, limit: Int = 200,
+             owner: String = AccountIdentity.owner(appContext), offset: Int = 0, maxId: Long = Long.MAX_VALUE,
+             from: Long? = null, to: Long? = null): List<FlightLogEntry> {
+        require(limit in 1..1000 && offset>=0) { "日志查询条数无效" }
         if (source != null && source != "本地演示") return emptyList()
         val escaped = keyword.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         val pattern = "%$escaped%"
         return helper.readableDatabase.rawQuery("""
-            SELECT e.rowid AS event_id, e.occurred_at, e.state, e.message,
+            SELECT e.rowid AS event_id, e.sequence, e.occurred_at, e.state, e.message,
                    r.id AS run_id, r.route_id, r.route_name
             FROM mission_run_events e JOIN mission_runs r ON r.id = e.run_id
-            WHERE e.message LIKE ? ESCAPE '\' OR r.id LIKE ? ESCAPE '\'
+            JOIN mission_run_log_owners o ON o.run_id=r.id
+            WHERE o.owner=? AND e.rowid<=? AND e.occurred_at>=? AND e.occurred_at<?
+            AND (e.message LIKE ? ESCAPE '\' OR r.id LIKE ? ESCAPE '\'
                OR r.route_id LIKE ? ESCAPE '\' OR r.route_name LIKE ? ESCAPE '\'
-               OR ('本地模拟巡检') LIKE ? ESCAPE '\'
-            ORDER BY e.occurred_at DESC, e.rowid DESC LIMIT $limit
-        """.trimIndent(), Array(5) { pattern }).use { rows ->
+               OR ('本地模拟巡检') LIKE ? ESCAPE '\')
+            ORDER BY e.occurred_at DESC, e.rowid DESC LIMIT $limit OFFSET $offset
+        """.trimIndent(), arrayOf(owner,maxId.toString(),(from ?: Long.MIN_VALUE).toString(),(to ?: Long.MAX_VALUE).toString(),pattern,pattern,pattern,pattern,pattern)).use { rows ->
             buildList {
                 while (rows.moveToNext()) add(FlightLogEntry(
                     id = -rows.getLong(rows.getColumnIndexOrThrow("event_id")),
                     time = rows.getLong(rows.getColumnIndexOrThrow("occurred_at")), category = "任务",
                     action = "本地模拟巡检", result = MissionRunState.valueOf(rows.getString(rows.getColumnIndexOrThrow("state"))).label,
                     source = "本地演示", taskId = rows.getString(rows.getColumnIndexOrThrow("run_id")),
-                    detail = rows.getString(rows.getColumnIndexOrThrow("route_name")) + "：" +
+                    detail = FlightLogPolicy.clean(rows.getString(rows.getColumnIndexOrThrow("route_name")) + "：" +
                         rows.getString(rows.getColumnIndexOrThrow("message")) + "\n航线编号：" +
-                        rows.getString(rows.getColumnIndexOrThrow("route_id"))))
+                        rows.getString(rows.getColumnIndexOrThrow("route_id"))),
+                    owner=owner, clientId="mission:${rows.getString(rows.getColumnIndexOrThrow("run_id"))}:${rows.getInt(rows.getColumnIndexOrThrow("sequence"))}",
+                    sourceCode="LOCAL_SIMULATION"))
             }
         }
     }
+
+    fun maxLogId(): Long = helper.readableDatabase.rawQuery("SELECT COALESCE(MAX(rowid),0) FROM mission_run_events",null)
+        .use { it.moveToFirst(); it.getLong(0) }
 
     /**
      * 在同一事务中提交状态、进度和事件；版本号阻止取消后的迟到结果覆盖终态。

@@ -178,7 +178,23 @@ class RoutePersistenceInstrumentedTest {
         assertEquals("旧航线", routes.getRoute("legacy")!!.route.name)
         assertEquals("legacy-point", routes.getRoute("legacy")!!.waypoints.single().id)
         assertTrue(runs.history().isEmpty())
-        RouteDatabaseHelper(context).use { assertEquals(2, it.readableDatabase.version) }
+        RouteDatabaseHelper(context).use { assertEquals(3, it.readableDatabase.version) }
+    }
+
+    @Test fun versionTwoUpgradePreservesRunEventsWithoutAssigningThemToCurrentUser() {
+        val route=RoutePlan(name="升级验证",taskName="F21")
+        routes.saveRoute(route,points(route.id))
+        val run=runs.create(route.id,MissionScenario.NORMAL)
+        routes.close(); runs.close()
+        context.openOrCreateDatabase("route_planning.db",Context.MODE_PRIVATE,null).use { db ->
+            db.execSQL("DROP TABLE mission_run_log_owners"); db.version=2
+        }
+        routes=RouteRepository(context); runs=MissionRunRepository(context)
+        assertEquals(run.id,runs.get(run.id)!!.id)
+        assertEquals(1,runs.events(run.id).size)
+        assertTrue(runs.logs(run.id).isEmpty())
+        assertEquals(1,runs.logs(run.id,owner="legacy-unassigned").size)
+        assertEquals(route.id,routes.getRoute(route.id)!!.route.id)
     }
 
     /**
