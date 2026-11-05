@@ -15,6 +15,12 @@ local.properties
 *.aab
 *.jks
 *.keystore
+.env
+.env.*
+!.env.example
+/deploy/certs/
+/backend/target/
+/aerial-backend/target/
 
 # Kotlin
 .kotlin/

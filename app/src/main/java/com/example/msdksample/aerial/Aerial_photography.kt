@@ -7,8 +7,8 @@ import android.view.Gravity
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
-import android.widget.VideoView
-import kotlin.math.min
+import android.os.SystemClock
+import android.view.SurfaceView
 import androidx.cardview.widget.CardView
 import androidx.lifecycle.lifecycleScope
 import com.example.msdksample.asuka.data.InspectionTask
@@ -25,6 +25,12 @@ import com.example.msdksample.drone.DroneManager
 import com.example.msdksample.drone.TelemetryDisplay
 import com.example.msdksample.drone.TelemetryUiObserver
 import com.example.msdksample.drone.state.DeviceStateSubscription
+import com.example.msdksample.aerial.inspection.DjiInspectionStream
+import com.example.msdksample.aerial.inspection.FrameFilterDecision
+import com.example.msdksample.aerial.inspection.InspectionFrameFilter
+import com.example.msdksample.aerial.inspection.RgbaFrameEncoder
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 class Aerial_photography : AppCompatActivity() {
     private lateinit var binding: ActivityAerialPhotographyBinding
@@ -53,11 +59,19 @@ class Aerial_photography : AppCompatActivity() {
         super.onStop()
     }
     private var isControlMode = false
-    private var voiceTimer: Long = 0
     private var currentPhotoUri: Uri? = null
     private var isListening = false
+    private var isVoicePressActive = false
+    private var cancelVoiceUpload = false
+    private var voiceRecorder: OnlinePttRecorder? = null
+    private var voiceMaxDurationRunnable: Runnable? = null
     private var isAnalyzingIntent = false
     private var llmTimeoutRunnable: Runnable? = null
+    private var inspectionStream: DjiInspectionStream? = null
+    private val inspectionFrameFilter = InspectionFrameFilter()
+    private val inspectionExecutor = Executors.newSingleThreadExecutor()
+    private val inspectionInFlight = AtomicBoolean(false)
+    private val hasReceivedInspectionFrame = AtomicBoolean(false)
 
     private var isVideoRecording = false
     private val simulatedFlight = SimulatedFlightCommandExecutor()
@@ -75,12 +89,6 @@ class Aerial_photography : AppCompatActivity() {
         return result.message
     }
     private val cameraController = CameraOperationController(DjiCameraGateway())
-
-    /** 演示视频文件名：需把 test.mp4 放到 App 专属外部目录（见 initDemoVideoIfPresent） */
-    private val demoVideoFileName = "test.mp4"
-
-    /** 演示视频是否已成功开始播放（决定 onPause/onResume 行为） */
-    private var demoVideoStarted = false
 
     /** 本页日志标签 */
     private val TAG = "Aerial_photography"
@@ -131,8 +139,6 @@ class Aerial_photography : AppCompatActivity() {
                 inspectionRepository.initializeData()
             }
 
-            initVoskRecognizer()
-
             binding.flVideoPreview.setOnClickListener {
                 if (window.decorView.systemUiVisibility and View.SYSTEM_UI_FLAG_HIDE_NAVIGATION != 0) {
                     showSystemUI()
@@ -141,8 +147,7 @@ class Aerial_photography : AppCompatActivity() {
                 }
             }
 
-            // 可选：在 FPV 区域播放演示视频（test.mp4），找不到则维持静态占位图
-            initDemoVideoIfPresent()
+            initInspectionStream()
 
             setupListeners()
             setupQuickCommandListeners()
@@ -154,11 +159,12 @@ class Aerial_photography : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        releaseDemoVideo()
-        // 注意：不能使用 “?: return” —— 一旦 llmTimeoutRunnable 为 null 会提前 return，
-        // 跳过 VoskHelper.destroy() 与 super.onDestroy()，抛出 SuperNotCalledException。
+        cancelVoiceUpload = true
+        voiceRecorder?.stop()
+        voiceMaxDurationRunnable?.let { handler.removeCallbacks(it) }
         llmTimeoutRunnable?.let { handler.removeCallbacks(it) }
-        VoskHelper.destroy()
+        inspectionStream?.release()
+        inspectionExecutor.shutdownNow()
         super.onDestroy()
     }
 
@@ -181,97 +187,106 @@ class Aerial_photography : AppCompatActivity() {
                 )
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  演示视频（FPV 区域播放 test.mp4）
-    // ══════════════════════════════════════════════════════════════
+    private fun initInspectionStream() {
+        val surfaceView = SurfaceView(this)
+        binding.ivVideoFeed.visibility = View.GONE
+        binding.flVideoPreview.setBackgroundColor(Color.BLACK)
+        binding.flVideoPreview.addView(
+            surfaceView,
+            0,
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
+        )
+        binding.tvAiDetectionStatus.text = "等待 DJI 图传"
+        binding.tvAiDetectionDetail.text = "连接飞机后将筛选画面并上传云端复核"
+        inspectionStream = DjiInspectionStream(
+            surfaceView,
+            ::onInspectionRgbaFrame
+        ) {
+            runOnUiThread {
+                updateInspectionStatus("图传初始化失败", "请检查 DJI SDK 与相机连接")
+            }
+        }
+    }
 
-    /**
-     * 尝试在 [flVideoPreview] 容器内播放演示视频（test.mp4）。
-     *
-     * 视频需预先放入 App 专属外部目录（免权限，可在 Debug 下用 adb 推送）：
-     *   adb push test.mp4 /sdcard/Android/data/com.example.msdksample/files/test.mp4
-     *
-     * 找不到文件 / 加载或播放失败时**静默降级**为原静态占位图，不崩溃。
-     */
-    private fun initDemoVideoIfPresent() {
-        val videoFile = File(getExternalFilesDir(null), demoVideoFileName)
-        if (!videoFile.exists()) {
-            Log.w(TAG, "演示视频不存在: ${videoFile.absolutePath}，保持静态占位图")
-            binding.tvRetryDemoVideo.visibility = View.VISIBLE
-            binding.tvRetryDemoVideo.setOnClickListener { initDemoVideoIfPresent() }
+    private fun onInspectionRgbaFrame(frameData: ByteArray, offset: Int, length: Int, width: Int, height: Int) {
+        if (hasReceivedInspectionFrame.compareAndSet(false, true)) {
+            runOnUiThread {
+                updateInspectionStatus("图传已连接", "正在筛选画面")
+            }
+        }
+        val decision = inspectionFrameFilter.evaluate(
+            frameData,
+            offset,
+            length,
+            width,
+            height,
+            SystemClock.elapsedRealtime(),
+            inspectionInFlight.get()
+        )
+        if (decision != FrameFilterDecision.ACCEPT || !inspectionInFlight.compareAndSet(false, true)) return
+
+        if (!LLMService.isCloudConfigured()) {
+            inspectionInFlight.set(false)
+            updateInspectionStatus("云端服务未配置", "请配置后端 HTTPS 地址与访问令牌")
             return
         }
-        val vv = binding.vvDemoVideo
-        binding.tvRetryDemoVideo.visibility = View.GONE
-        binding.ivVideoFeed.visibility = View.GONE
-        vv.visibility = View.VISIBLE
-        binding.flVideoPreview.setBackgroundColor(Color.BLACK)
+        if (!NetworkUtil.isOnline(this)) {
+            inspectionInFlight.set(false)
+            updateInspectionStatus("网络不可用", "巡检图像需要联网后才能分析")
+            return
+        }
 
-        vv.setOnPreparedListener { mp ->
-            mp.isLooping = true
-            fitDemoVideoToContainer(vv, mp.videoWidth, mp.videoHeight)
-            mp.start()
-            demoVideoStarted = true
-            Log.i(TAG, "演示视频已开始播放: ${videoFile.absolutePath}")
+        val frameSize = width.toLong() * height * 4
+        if (frameSize > Int.MAX_VALUE) {
+            inspectionInFlight.set(false)
+            updateInspectionStatus("图像格式无效", "未上传该画面")
+            return
         }
-        vv.setOnErrorListener { _, _, _ ->
-            Log.w(TAG, "演示视频播放失败，降级为静态占位图")
-            showStaticFallback()
-            binding.tvRetryDemoVideo.visibility = View.VISIBLE
-            true
-        }
+        val rgbaCopy = frameData.copyOfRange(offset, offset + frameSize.toInt())
+        updateInspectionStatus("云端复核中", "画面已筛选，正在上传分析")
         try {
-            vv.setVideoURI(Uri.fromFile(videoFile))
-        } catch (t: Throwable) {
-            Log.w(TAG, "加载演示视频异常: ${t.message}")
-            showStaticFallback()
-            binding.tvRetryDemoVideo.visibility = View.VISIBLE
+            inspectionExecutor.execute {
+                val jpeg = RgbaFrameEncoder.toJpeg(rgbaCopy, 0, rgbaCopy.size, width, height)
+                if (jpeg == null) {
+                    inspectionInFlight.set(false)
+                    updateInspectionStatus("图像压缩失败", "已跳过当前画面")
+                    return@execute
+                }
+                LLMService.analyzeInspection(jpeg) { result ->
+                    inspectionInFlight.set(false)
+                    runOnUiThread {
+                        result.fold(
+                            onSuccess = ::showInspectionFinding,
+                            onFailure = { updateInspectionStatus("云端服务不可用", it.message ?: "请稍后重试") }
+                        )
+                    }
+                }
+            }
+        } catch (_: java.util.concurrent.RejectedExecutionException) {
+            inspectionInFlight.set(false)
         }
     }
 
-    /** 将视频等比例缩放到容器内并居中（不裁剪、不变形） */
-    private fun fitDemoVideoToContainer(vv: VideoView, videoWidth: Int, videoHeight: Int) {
-        if (videoWidth <= 0 || videoHeight <= 0) return
-        vv.post {
-            val container = binding.flVideoPreview
-            val cw = container.width
-            val ch = container.height
-            if (cw <= 0 || ch <= 0) return@post
-            val scale = min(cw.toFloat() / videoWidth, ch.toFloat() / videoHeight)
-            val lp = FrameLayout.LayoutParams(
-                (videoWidth * scale).toInt().coerceAtLeast(1),
-                (videoHeight * scale).toInt().coerceAtLeast(1),
-                Gravity.CENTER
-            )
-            vv.layoutParams = lp
+    private fun showInspectionFinding(finding: InspectionFinding) {
+        val status = when (finding.status) {
+            "suspected_anomaly" -> "疑似异常，需人工复核"
+            "no_obvious_anomaly" -> "未发现明显异常"
+            else -> "画面证据不足，需人工复核"
         }
+        val detail = listOf(finding.title, finding.description)
+            .filter(String::isNotBlank)
+            .distinct()
+            .joinToString(" · ")
+        updateInspectionStatus(status, detail.ifBlank { "模型没有返回可复核的描述" })
     }
 
-    /** 播放失败/降级：隐藏播放器，恢复原静态占位图与容器背景 */
-    private fun showStaticFallback() {
-        demoVideoStarted = false
-        binding.flVideoPreview.setBackgroundColor(Color.TRANSPARENT)
-        binding.vvDemoVideo.visibility = View.GONE
-        binding.ivVideoFeed.visibility = View.VISIBLE
-        binding.tvRetryDemoVideo.visibility = View.VISIBLE
-    }
-
-    private fun pauseDemoVideo() {
-        if (demoVideoStarted && binding.vvDemoVideo.isPlaying) {
-            binding.vvDemoVideo.pause()
-        }
-    }
-
-    private fun resumeDemoVideo() {
-        if (demoVideoStarted && !binding.vvDemoVideo.isPlaying) {
-            binding.vvDemoVideo.start()
-        }
-    }
-
-    private fun releaseDemoVideo() {
-        demoVideoStarted = false
-        if (::binding.isInitialized) {
-            binding.vvDemoVideo.stopPlayback()
+    private fun updateInspectionStatus(status: String, detail: String) {
+        if (!::binding.isInitialized || isFinishing || isDestroyed) return
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            binding.tvAiDetectionStatus.text = status
+            binding.tvAiDetectionDetail.text = detail
+        } else {
+            runOnUiThread { updateInspectionStatus(status, detail) }
         }
     }
 
@@ -346,10 +361,14 @@ class Aerial_photography : AppCompatActivity() {
         binding.cvVoice.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> {
+                    if (isVoicePressActive || isListening || isAnalyzingIntent) return@setOnTouchListener true
+                    isVoicePressActive = true
+                    cancelVoiceUpload = false
                     startVoiceInput()
                     true
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    isVoicePressActive = false
                     stopVoiceInput()
                     true
                 }
@@ -576,42 +595,15 @@ class Aerial_photography : AppCompatActivity() {
         }
     }
 
-    private fun initVoskRecognizer() {
-        VoskHelper.init(this, object : VoskHelper.VoskInitCallback {
-            override fun onDownloadStart() {
-                showToast("正在下载离线语音模型 (约42MB)...")
-            }
-
-            override fun onDownloadProgress(percent: Int) {
-                if (percent % 20 == 0) {
-                    showToast("模型下载中... $percent%")
-                }
-            }
-
-            override fun onDownloadComplete() {
-                showToast("下载完成，正在解压模型...")
-            }
-
-            override fun onExtracting() {
-            }
-
-            override fun onInitialized() {
-                showToast("离线语音引擎已就绪")
-            }
-
-            override fun onError(message: String) {
-                showToast(message)
-            }
-        })
-    }
-
     private fun startVoiceInput() {
-        if (!VoskHelper.isModelReady()) {
-            if (VoskHelper.isInitializing()) {
-                showToast("语音引擎正在初始化，请稍后...")
-            } else {
-                showToast("语音引擎未就绪，请稍后重试")
-            }
+        if (!NetworkUtil.isOnline(this)) {
+            isVoicePressActive = false
+            showToast("语音识别必须联网，请连接网络后重试")
+            return
+        }
+        if (!LLMService.isCloudConfigured()) {
+            isVoicePressActive = false
+            showToast("请先配置 HTTPS 后端地址与访问令牌")
             return
         }
 
@@ -634,63 +626,97 @@ class Aerial_photography : AppCompatActivity() {
                 )
             }
             .request { allGranted, _, _ ->
-                if (allGranted) {
-                    beginSpeechRecognition()
+                if (allGranted && isVoicePressActive) {
+                    beginVoiceRecording()
                 } else {
-                    showToast("需要录音权限才能使用语音输入")
+                    if (!allGranted) showToast("需要录音权限才能使用语音输入")
                 }
             }
     }
 
-    private fun beginSpeechRecognition() {
-        binding.cvVoice.alpha = 0.7f
-        showToast("正在聆听...")
+    private fun beginVoiceRecording() {
+        val recorder = OnlinePttRecorder(this) { result ->
+            voiceRecorder = null
+            isListening = false
+            if (cancelVoiceUpload || isDestroyed) {
+                result.getOrNull()?.delete()
+                cancelVoiceUpload = false
+                return@OnlinePttRecorder
+            }
+            result.fold(
+                onSuccess = ::uploadVoiceForAnalysis,
+                onFailure = { showToast("没有录到有效语音，请按住按钮后再说话") }
+            )
+        }
+        if (!recorder.start()) {
+            isVoicePressActive = false
+            showToast("无法启动录音，请检查麦克风权限和设备状态")
+            return
+        }
 
+        voiceRecorder = recorder
         isListening = true
-
-        VoskHelper.startListening(this, object : VoskHelper.VoskRecognitionListener {
-            override fun onPartialResult(text: String) {
-                binding.cvVoice.alpha = 0.6f
+        binding.cvVoice.alpha = 0.7f
+        showToast("正在录音，松开后联网识别")
+        voiceMaxDurationRunnable = Runnable {
+            if (isListening) {
+                isVoicePressActive = false
+                showToast("录音已达到 10 秒上限，正在上传")
+                stopVoiceInput()
             }
-
-            override fun onFinalResult(text: String) {
-                isListening = false
-                handler.removeCallbacksAndMessages(null)
-                binding.cvVoice.alpha = 1.0f
-                if (text.isNotBlank()) {
-                    showCommandConfirmDialog(text)
-                } else {
-                    showToast("未识别到语音，请重试")
-                }
-            }
-
-            override fun onError(message: String) {
-                isListening = false
-                handler.removeCallbacksAndMessages(null)
-                binding.cvVoice.alpha = 1.0f
-                showToast("语音识别出错: $message")
-            }
-
-            override fun onTimeout() {
-                isListening = false
-                handler.removeCallbacksAndMessages(null)
-                binding.cvVoice.alpha = 1.0f
-                showToast("语音输入超时，请重试")
-            }
-        })
-
-        voiceTimer = System.currentTimeMillis()
-        handler.postDelayed({
-            stopVoiceInput()
-        }, 5000)
+        }
+        handler.postDelayed(voiceMaxDurationRunnable!!, 10_000)
     }
 
     private fun stopVoiceInput() {
         binding.cvVoice.alpha = 1.0f
-        handler.removeCallbacksAndMessages(null)
+        voiceMaxDurationRunnable?.let { handler.removeCallbacks(it) }
+        voiceMaxDurationRunnable = null
         if (isListening) {
             isListening = false
-            VoskHelper.stopListening()
+            voiceRecorder?.stop()
+        }
+    }
+
+    private fun uploadVoiceForAnalysis(audioFile: File) {
+        if (!NetworkUtil.isOnline(this)) {
+            audioFile.delete()
+            showToast("网络已断开，语音未识别；请联网后重新录制")
+            return
+        }
+        isAnalyzingIntent = true
+        showToast("正在上传语音并调用云端 AI 分析")
+        val completed = AtomicBoolean(false)
+        llmTimeoutRunnable = Runnable {
+            if (completed.compareAndSet(false, true)) {
+                isAnalyzingIntent = false
+                showToast("云端语音处理超时，请检查网络后重试")
+            }
+        }
+        handler.postDelayed(llmTimeoutRunnable!!, LLMConfig.INTENT_TIMEOUT * 1000)
+        LLMService.analyzeVoice(audioFile) { result ->
+            audioFile.delete()
+            runOnUiThread {
+                if (isDestroyed || !completed.compareAndSet(false, true)) return@runOnUiThread
+                llmTimeoutRunnable?.let { handler.removeCallbacks(it) }
+                isAnalyzingIntent = false
+                when (result) {
+                    is VoiceAnalysisResult.Success -> {
+                        binding.etCommandInput.setText(result.transcript)
+                        showFlightIntentConfirmDialog(result.intent, result.summary)
+                    }
+                    is VoiceAnalysisResult.Unknown -> {
+                        binding.etCommandInput.setText(result.transcript)
+                        AlertDialog.Builder(this)
+                            .setTitle("无法识别飞行意图")
+                            .setMessage("${result.reason}\n\n请修改指令后重试。")
+                            .setPositiveButton("知道了", null)
+                            .setCancelable(false)
+                            .show()
+                    }
+                    is VoiceAnalysisResult.Error -> showToast(result.message)
+                }
+            }
         }
     }
 
@@ -770,44 +796,35 @@ class Aerial_photography : AppCompatActivity() {
     private fun showCommandConfirmDialog(command: String) {
         if (isAnalyzingIntent) return
 
-        if (NetworkUtil.isOnline(this)) {
-            analyzeWithLLM(command)
-        } else {
-            val matched = matchLocalCommand(command)
-            if (matched != null) {
-                showLocalCommandConfirmDialog(command, matched)
-            } else {
-                showToast("离线模式仅支持简单指令（返航、悬停、拍照、起飞、降落、录像）")
-            }
+        if (!NetworkUtil.isOnline(this)) {
+            showToast("飞行意图分析必须联网，请连接网络后重试")
+            return
         }
+        if (!LLMService.isCloudConfigured()) {
+            showToast("请先配置 HTTPS 后端地址与访问令牌")
+            return
+        }
+        analyzeWithLLM(command)
     }
 
     private fun analyzeWithLLM(command: String) {
         isAnalyzingIntent = true
         showToast("正在分析飞行意图...")
 
-        var isCompleted = false
+        val isCompleted = AtomicBoolean(false)
 
         llmTimeoutRunnable = Runnable {
-            if (!isCompleted) {
-                isCompleted = true
+            if (isCompleted.compareAndSet(false, true)) {
                 isAnalyzingIntent = false
-                showToast("意图分析超时，切换为离线模式")
-                val matched = matchLocalCommand(command)
-                if (matched != null) {
-                    showLocalCommandConfirmDialog(command, matched)
-                } else {
-                    showToast("离线模式仅支持简单指令（返航、悬停、拍照、起飞、降落、录像）")
-                }
+                showToast("云端意图分析超时，请检查网络后重试")
             }
         }
         handler.postDelayed(llmTimeoutRunnable!!, LLMConfig.INTENT_TIMEOUT * 1000)
 
         LLMService.analyzeIntent(command) { result ->
             runOnUiThread {
-                if (isCompleted) return@runOnUiThread
-                isCompleted = true
-                handler.removeCallbacks(llmTimeoutRunnable!!)
+                if (!isCompleted.compareAndSet(false, true)) return@runOnUiThread
+                llmTimeoutRunnable?.let { handler.removeCallbacks(it) }
                 isAnalyzingIntent = false
                 when (result) {
                     is LLMResult.Success -> {
@@ -824,16 +841,8 @@ class Aerial_photography : AppCompatActivity() {
                     is LLMResult.Error -> {
                         AlertDialog.Builder(this)
                             .setTitle("意图分析失败")
-                            .setMessage("${result.message}\n\n是否切换离线模式重试？")
-                            .setPositiveButton("离线匹配") { _, _ ->
-                                val matched = matchLocalCommand(command)
-                                if (matched != null) {
-                                    showLocalCommandConfirmDialog(command, matched)
-                                } else {
-                                    showToast("离线模式仅支持简单指令（返航、悬停、拍照、起飞、降落、录像）")
-                                }
-                            }
-                            .setNegativeButton("取消", null)
+                            .setMessage("${result.message}\n\n请检查联网状态和后端配置后重试。")
+                            .setPositiveButton("知道了", null)
                             .setCancelable(false)
                             .show()
                     }
@@ -841,33 +850,6 @@ class Aerial_photography : AppCompatActivity() {
                     else -> {}
                 }
             }
-        }
-    }
-
-    private fun matchLocalCommand(command: String): String? = LocalCommandMatcher.match(command)
-
-    private fun showLocalCommandConfirmDialog(command: String, matched: String) {
-        binding.tvConfirmTitle.text = matched
-        binding.tvConfirmMessage.text = "是否执行以下命令？"
-        binding.cvConfirmExecute.setOnClickListener {
-            hideCommandConfirmDialog()
-            executeLocalCommand(matched)
-        }
-        binding.cvConfirmCancel.setOnClickListener { hideCommandConfirmDialog() }
-        binding.clCommandConfirmDialog.visibility = View.VISIBLE
-    }
-
-    private fun executeLocalCommand(matched: String) {
-        hideQuickCommandDialog()
-        when (matched) {
-            "返航" -> showToast(executeSimulatedFlight(BasicFlightAction.RETURN_HOME))
-            "悬停" -> showToast(executeSimulatedFlight(BasicFlightAction.HOVER))
-            "拍照" -> captureDronePhoto()
-            "起飞" -> showToast(executeSimulatedFlight(BasicFlightAction.TAKEOFF))
-            "降落" -> showToast(executeSimulatedFlight(BasicFlightAction.LAND))
-            "录像" -> startVideoRecording()
-            "停止录像" -> stopVideoRecording()
-            else -> showToast("执行指令: $matched")
         }
     }
 
@@ -999,11 +981,14 @@ class Aerial_photography : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        resumeDemoVideo()
+        inspectionStream?.resume()
     }
 
     override fun onPause() {
-        pauseDemoVideo()
+        isVoicePressActive = false
+        cancelVoiceUpload = true
+        stopVoiceInput()
+        inspectionStream?.pause()
         super.onPause()
     }
 

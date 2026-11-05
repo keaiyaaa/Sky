@@ -11,6 +11,11 @@ plugins {
     id("kotlin-kapt")
 }
 
+fun String.asBuildConfigString(): String = "\"${replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
+val aerialBackendUrl = providers.gradleProperty("AERIAL_BACKEND_URL").orElse("").get()
+val aerialApiToken = providers.gradleProperty("AERIAL_API_TOKEN").orElse("").get()
+
 android {
     namespace = "com.example.msdksample"
     compileSdk = 36
@@ -27,6 +32,9 @@ android {
         ndk {
             abiFilters.add("arm64-v8a")
         }
+
+        buildConfigField("String", "AERIAL_BACKEND_URL", aerialBackendUrl.asBuildConfigString())
+        buildConfigField("String", "AERIAL_API_TOKEN", aerialApiToken.asBuildConfigString())
     }
 
     signingConfigs {
@@ -54,6 +62,7 @@ android {
     }
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     // DJI MSDK 所需的 SO 库打包配置
@@ -146,11 +155,6 @@ dependencies {
     // 权限请求库（来自 DJI-FLY-aerial）
     // ═══════════════════════════════════════════════════════════════
     implementation("com.guolindev.permissionx:permissionx:1.7.1")
-
-    // ═══════════════════════════════════════════════════════════════
-    // Vosk 离线语音识别（来自 DJI-FLY-aerial）
-    // ═══════════════════════════════════════════════════════════════
-    implementation("com.alphacephei:vosk-android:0.3.47")
 
     // ═══════════════════════════════════════════════════════════════
     // OkHttp 网络请求（来自 DJI-FLY-aerial）

@@ -1,0 +1,27 @@
+server:
+  address: 0.0.0.0
+  port: ${PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+
+spring:
+  servlet:
+    multipart:
+      max-file-size: 768KB
+      max-request-size: 1MB
+  mvc:
+    log-request-details: false
+
+aerial:
+  api-token: ${AERIAL_API_TOKEN:}
+  bailian:
+    api-key: ${DASHSCOPE_API_KEY:}
+    base-url: ${BAILIAN_BASE_URL:}
+    model: ${BAILIAN_ASR_MODEL:qwen3-asr-flash}
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com}
+    text-model: ${DEEPSEEK_TEXT_MODEL:deepseek-flash}
+    vision-model: ${DEEPSEEK_VISION_MODEL:deepseek-flash}
