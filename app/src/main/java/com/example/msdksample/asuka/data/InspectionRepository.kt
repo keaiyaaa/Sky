@@ -2,7 +2,6 @@ package com.example.msdksample.asuka.data
 
 import android.content.Context
 import com.example.msdksample.asuka.database.DatabaseDataSource
-import com.example.msdksample.asuka.database.entities.WorkOrderEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -142,53 +141,5 @@ class InspectionRepository(context: Context) {
 
     suspend fun getUrgentTaskCount(): Int {
         return databaseDataSource.getUrgentTaskCount()
-    }
-
-    // ==================== 工单（F17） ====================
-
-    /** 创建工单：本地落库，返回新工单 ID */
-    suspend fun createWorkOrder(
-        taskId: Long,
-        taskDate: String,
-        taskName: String,
-        title: String,
-        description: String,
-        priority: String,
-        assignee: String = ""
-    ): Long {
-        return withContext(Dispatchers.IO) {
-            databaseDataSource.createWorkOrder(
-                WorkOrderEntity(
-                    taskId = taskId,
-                    taskDate = taskDate,
-                    taskName = taskName,
-                    title = title,
-                    description = description,
-                    priority = priority,
-                    assignee = assignee
-                )
-            )
-        }
-    }
-
-    /** 查询任务的工单列表 */
-    suspend fun getWorkOrdersByTask(taskId: Long): List<WorkOrderEntity> {
-        return withContext(Dispatchers.IO) {
-            databaseDataSource.getWorkOrdersByTask(taskId)
-        }
-    }
-
-    /** 查询任务的工单数量 */
-    suspend fun countWorkOrdersByTask(taskId: Long): Int {
-        return withContext(Dispatchers.IO) {
-            databaseDataSource.countWorkOrdersByTask(taskId)
-        }
-    }
-
-    /** 更新工单状态 */
-    suspend fun updateWorkOrderStatus(id: Long, status: String): Boolean {
-        return withContext(Dispatchers.IO) {
-            databaseDataSource.updateWorkOrderStatus(id, status) > 0
-        }
     }
 }
