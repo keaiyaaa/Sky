@@ -3,8 +3,10 @@ package com.example.msdksample.asuka.database
 import android.content.Context
 import com.example.msdksample.asuka.database.daos.TaskDao
 import com.example.msdksample.asuka.database.daos.AnalysisDao
+import com.example.msdksample.asuka.database.daos.WorkOrderDao
 import com.example.msdksample.asuka.database.entities.TaskEntity
 import com.example.msdksample.asuka.database.entities.AnalysisEntity
+import com.example.msdksample.asuka.database.entities.WorkOrderEntity
 import com.example.msdksample.asuka.data.AnalysisInfo
 import com.example.msdksample.asuka.data.InspectionDateGroup
 import com.example.msdksample.asuka.data.InspectionTask
@@ -18,6 +20,7 @@ class DatabaseDataSource(context: Context) {
 
     private val taskDao: TaskDao = AppDatabase.getInstance(context).taskDao()
     private val analysisDao: AnalysisDao = AppDatabase.getInstance(context).analysisDao()
+    private val workOrderDao: WorkOrderDao = AppDatabase.getInstance(context).workOrderDao()
 
     suspend fun initializeMockDataIfNeeded() {
         withContext(Dispatchers.IO) {
@@ -128,6 +131,36 @@ class DatabaseDataSource(context: Context) {
         withContext(Dispatchers.IO) {
             taskDao.deleteAllTasks()
             analysisDao.deleteAllAnalysis()
+        }
+    }
+
+    // ==================== 工单（F17） ====================
+
+    /** 创建工单并落库，返回新工单 ID */
+    suspend fun createWorkOrder(workOrder: WorkOrderEntity): Long {
+        return withContext(Dispatchers.IO) {
+            workOrderDao.insert(workOrder)
+        }
+    }
+
+    /** 查询某任务的全部工单 */
+    suspend fun getWorkOrdersByTask(taskId: Long): List<WorkOrderEntity> {
+        return withContext(Dispatchers.IO) {
+            workOrderDao.getByTaskIdOnce(taskId)
+        }
+    }
+
+    /** 查询某任务的工单数量（用于按钮徽标/状态提示） */
+    suspend fun countWorkOrdersByTask(taskId: Long): Int {
+        return withContext(Dispatchers.IO) {
+            workOrderDao.countByTaskId(taskId)
+        }
+    }
+
+    /** 更新工单状态 */
+    suspend fun updateWorkOrderStatus(id: Long, status: String): Int {
+        return withContext(Dispatchers.IO) {
+            workOrderDao.updateStatus(id, status, System.currentTimeMillis())
         }
     }
 

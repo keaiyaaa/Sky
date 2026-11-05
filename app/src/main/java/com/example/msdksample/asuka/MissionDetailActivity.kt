@@ -25,6 +25,7 @@ class MissionDetailActivity : AppCompatActivity() {
     private var currentDate: String = ""
     private var currentTaskIndex: Int = 0
     private var currentTaskId: Long = 0
+    private var currentTaskName: String = ""
     private var currentFilter: String = "time-desc"
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,7 +38,7 @@ class MissionDetailActivity : AppCompatActivity() {
         binding.ivBack.setOnClickListener { finish() }
         binding.btnHistory.setOnClickListener { showHistory() }
         binding.btnExport.setOnClickListener { exportPdfReport() }
-        binding.btnCreateOrder.setOnClickListener { showSuccessModal() }
+        binding.btnCreateOrder.setOnClickListener { openWorkOrders() }
         binding.btnFullscreen.setOnClickListener { toggleFullscreen() }
         binding.playOverlay.setOnClickListener { playVideo() }
         binding.btnFilter.setOnClickListener { showFilterMenu() }
@@ -95,11 +96,13 @@ class MissionDetailActivity : AppCompatActivity() {
         currentDate = date
         currentTaskIndex = taskIndex
         currentTaskId = task.id
+        currentTaskName = task.name
 
         updateHeader(task, date)
         updateVideo(task)
         updateThumbnails(task)
         updateAnalysis(task)
+        updateCreateOrderButton()
     }
 
     private fun updateHeader(task: InspectionTask, date: String) {
@@ -234,6 +237,160 @@ class MissionDetailActivity : AppCompatActivity() {
 
     private fun playVideo() {
         binding.playOverlay.visibility = View.GONE
+    }
+
+    // ==================== 工单（F17） ====================
+
+    /** 刷新"创建维修工单"按钮：显示当前任务已有工单数，无 ID 时禁用 */
+    private fun updateCreateOrderButton() {
+        if (currentTaskId <= 0) {
+            binding.btnCreateOrder.isEnabled = false
+            binding.btnCreateOrder.alpha = 0.5f
+            binding.btnCreateOrder.text = "创建维修工单"
+            return
+        }
+        binding.btnCreateOrder.isEnabled = true
+        binding.btnCreateOrder.alpha = 1f
+        lifecycleScope.launch {
+            val count = repository.countWorkOrdersByTask(currentTaskId)
+            binding.btnCreateOrder.text = if (count > 0) "创建维修工单（已有 $count）" else "创建维修工单"
+        }
+    }
+
+    /**
+     * 工单入口：已有工单则先展示列表（可推进状态/查看），否则直接进入创建。
+     */
+    private fun openWorkOrders() {
+        if (currentTaskId <= 0) {
+            Toast.makeText(this, "当前任务无本地记录，无法创建工单", Toast.LENGTH_SHORT).show()
+            return
+        }
+        lifecycleScope.launch {
+            val count = repository.countWorkOrdersByTask(currentTaskId)
+            if (count > 0) showWorkOrdersDialog() else showCreateWorkOrderDialog()
+        }
+    }
+
+    /** 弹出创建工单对话框：输入标题/描述/优先级/负责人，落库保存 */
+    private fun showCreateWorkOrderDialog() {
+        if (currentTaskId <= 0) {
+            Toast.makeText(this, "当前任务无本地记录，无法创建工单", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val dialogView = android.view.LayoutInflater.from(this)
+            .inflate(R.layout.dialog_create_work_order, null)
+        val etTitle = dialogView.findViewById<android.widget.EditText>(R.id.et_wo_title)
+        val etDesc = dialogView.findViewById<android.widget.EditText>(R.id.et_wo_desc)
+        val etAssignee = dialogView.findViewById<android.widget.EditText>(R.id.et_wo_assignee)
+        val spinnerPriority = dialogView.findViewById<android.widget.Spinner>(R.id.sp_wo_priority)
+
+        val priorities = arrayOf("Low", "Medium", "High", "Critical")
+        spinnerPriority.adapter = android.widget.ArrayAdapter(
+            this, android.R.layout.simple_spinner_dropdown_item, priorities
+        ).apply { setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item) }
+        // 默认按任务状态给一个合理优先级
+        val defaultIdx = if (binding.tvDefectId.visibility == View.VISIBLE) 2 else 1
+        spinnerPriority.setSelection(defaultIdx)
+
+        // 预填标题：任务名 + 缺陷 ID
+        val defectPart = if (binding.tvDefectId.visibility == View.VISIBLE)
+            " [${binding.tvDefectId.text.toString().removePrefix("缺陷 ID: ")}]" else ""
+        etTitle.setText("$currentTaskName 工单$defectPart")
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("创建工单 - $currentTaskName")
+            .setView(dialogView)
+            .setPositiveButton("创建") { _, _ ->
+                val title = etTitle.text.toString().trim()
+                val desc = etDesc.text.toString().trim()
+                val assignee = etAssignee.text.toString().trim()
+                val priority = priorities[spinnerPriority.selectedItemPosition]
+
+                if (title.isEmpty()) {
+                    Toast.makeText(this, "工单标题不能为空", Toast.LENGTH_SHORT).show()
+                    return@setPositiveButton
+                }
+
+                lifecycleScope.launch {
+                    val newId = repository.createWorkOrder(
+                        taskId = currentTaskId,
+                        taskDate = currentDate,
+                        taskName = currentTaskName,
+                        title = title,
+                        description = desc,
+                        priority = priority,
+                        assignee = assignee
+                    )
+                    withContext(Dispatchers.Main) {
+                        if (newId > 0) {
+                            updateCreateOrderButton()
+                            showWorkOrdersDialog()
+                        } else {
+                            Toast.makeText(this@MissionDetailActivity, "工单保存失败", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            .setNegativeButton("取消", null)
+            .show()
+    }
+
+    /** 展示当前任务的工单列表（含创建时间/状态/负责人），点击可推进状态 */
+    private fun showWorkOrdersDialog() {
+        lifecycleScope.launch {
+            val orders = repository.getWorkOrdersByTask(currentTaskId)
+            withContext(Dispatchers.Main) {
+                if (orders.isEmpty()) {
+                    Toast.makeText(this@MissionDetailActivity, "暂无工单", Toast.LENGTH_SHORT).show()
+                    return@withContext
+                }
+                val sdf = java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.getDefault())
+                val items = orders.map { o ->
+                    val time = sdf.format(java.util.Date(o.createdAt))
+                    val assigneePart = if (o.assignee.isNotEmpty()) " · ${o.assignee}" else ""
+                    "[${
+                        when (o.status) {
+                            "Open" -> "待处理"
+                            "InProgress" -> "处理中"
+                            "Resolved" -> "已解决"
+                            "Closed" -> "已关闭"
+                            else -> o.status
+                        }
+                    }] ${o.title}\n  ${o.priority}$assigneePart · $time"
+                }.toTypedArray()
+
+                androidx.appcompat.app.AlertDialog.Builder(this@MissionDetailActivity)
+                    .setTitle("工单列表（${orders.size}）- 点击推进状态")
+                    .setItems(items) { _, which ->
+                        val order = orders[which]
+                        val nextStatus = when (order.status) {
+                            "Open" -> "InProgress"
+                            "InProgress" -> "Resolved"
+                            "Resolved" -> "Closed"
+                            else -> null
+                        }
+                        if (nextStatus != null) {
+                            lifecycleScope.launch {
+                                repository.updateWorkOrderStatus(order.id, nextStatus)
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(
+                                        this@MissionDetailActivity,
+                                        "工单已推进：${order.status} → $nextStatus",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                    showWorkOrdersDialog()
+                                }
+                            }
+                        } else {
+                            Toast.makeText(this@MissionDetailActivity, "工单已关闭", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    .setNegativeButton("关闭", null)
+                    .setNeutralButton("新建") { _, _ -> showCreateWorkOrderDialog() }
+                    .show()
+            }
+        }
     }
 
     private fun toggleFullscreen() {
