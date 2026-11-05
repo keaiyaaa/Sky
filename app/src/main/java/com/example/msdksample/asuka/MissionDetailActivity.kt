@@ -12,6 +12,7 @@ import com.example.msdksample.R
 import com.bumptech.glide.Glide
 import com.example.msdksample.asuka.data.InspectionRepository
 import com.example.msdksample.asuka.data.InspectionTask
+import com.example.msdksample.asuka.database.entities.WorkOrderEntity
 import com.example.msdksample.databinding.ActivityMissionDetailBinding
 import com.example.msdksample.asuka.utils.PdfReportUtil
 import kotlinx.coroutines.Dispatchers
@@ -340,7 +341,16 @@ class MissionDetailActivity : AppCompatActivity() {
             .show()
     }
 
-    /** 展示当前任务的工单列表（含创建时间/状态/负责人），点击可推进状态 */
+    /** 工单状态英文值 → 中文文案 */
+    private fun statusLabel(status: String): String = when (status) {
+        "Open" -> "待处理"
+        "InProgress" -> "处理中"
+        "Resolved" -> "已解决"
+        "Closed" -> "已关闭"
+        else -> status
+    }
+
+    /** 展示当前任务的工单列表：点击条目只查看详情，不会改动状态 */
     private fun showWorkOrdersDialog() {
         lifecycleScope.launch {
             val orders = repository.getWorkOrdersByTask(currentTaskId)
@@ -353,46 +363,64 @@ class MissionDetailActivity : AppCompatActivity() {
                 val items = orders.map { o ->
                     val time = sdf.format(java.util.Date(o.createdAt))
                     val assigneePart = if (o.assignee.isNotEmpty()) " · ${o.assignee}" else ""
-                    "[${
-                        when (o.status) {
-                            "Open" -> "待处理"
-                            "InProgress" -> "处理中"
-                            "Resolved" -> "已解决"
-                            "Closed" -> "已关闭"
-                            else -> o.status
-                        }
-                    }] ${o.title}\n  ${o.priority}$assigneePart · $time"
+                    "[${statusLabel(o.status)}] ${o.title}\n  ${o.priority}$assigneePart · $time"
                 }.toTypedArray()
 
                 androidx.appcompat.app.AlertDialog.Builder(this@MissionDetailActivity)
-                    .setTitle("工单列表（${orders.size}）- 点击推进状态")
-                    .setItems(items) { _, which ->
-                        val order = orders[which]
-                        val nextStatus = when (order.status) {
-                            "Open" -> "InProgress"
-                            "InProgress" -> "Resolved"
-                            "Resolved" -> "Closed"
-                            else -> null
-                        }
-                        if (nextStatus != null) {
-                            lifecycleScope.launch {
-                                repository.updateWorkOrderStatus(order.id, nextStatus)
-                                withContext(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        this@MissionDetailActivity,
-                                        "工单已推进：${order.status} → $nextStatus",
-                                        Toast.LENGTH_SHORT
-                                    ).show()
-                                    showWorkOrdersDialog()
-                                }
-                            }
-                        } else {
-                            Toast.makeText(this@MissionDetailActivity, "工单已关闭", Toast.LENGTH_SHORT).show()
-                        }
-                    }
+                    .setTitle("工单列表（${orders.size}）- 点击查看详情")
+                    .setItems(items) { _, which -> showWorkOrderDetail(orders[which]) }
                     .setNegativeButton("关闭", null)
                     .setNeutralButton("新建") { _, _ -> showCreateWorkOrderDialog() }
                     .show()
+            }
+        }
+    }
+
+    /** 工单详情（只读展示）；需要改状态时由用户点“推进到…”按钮二次确认 */
+    private fun showWorkOrderDetail(order: WorkOrderEntity) {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+        val nextStatus = when (order.status) {
+            "Open" -> "InProgress"
+            "InProgress" -> "Resolved"
+            "Resolved" -> "Closed"
+            else -> null
+        }
+        val message = buildString {
+            appendLine("状态：${statusLabel(order.status)}")
+            appendLine("优先级：${order.priority}")
+            if (order.assignee.isNotEmpty()) appendLine("负责人：${order.assignee}")
+            appendLine("创建时间：${sdf.format(java.util.Date(order.createdAt))}")
+            appendLine("更新时间：${sdf.format(java.util.Date(order.updatedAt))}")
+            if (order.description.isNotEmpty()) {
+                appendLine()
+                appendLine("缺陷描述：")
+                append(order.description)
+            }
+        }
+
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(order.title)
+            .setMessage(message)
+            .setPositiveButton(
+                if (nextStatus != null) "推进到「${statusLabel(nextStatus)}」" else "已关闭"
+            ) { _, _ ->
+                if (nextStatus != null) advanceWorkOrder(order.id, order.status, nextStatus)
+            }
+            .setNegativeButton("返回", null)
+            .show()
+    }
+
+    /** 推进工单状态并回到列表 */
+    private fun advanceWorkOrder(id: Long, from: String, to: String) {
+        lifecycleScope.launch {
+            repository.updateWorkOrderStatus(id, to)
+            withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@MissionDetailActivity,
+                    "工单已推进：${statusLabel(from)} → ${statusLabel(to)}",
+                    Toast.LENGTH_SHORT
+                ).show()
+                showWorkOrdersDialog()
             }
         }
     }
